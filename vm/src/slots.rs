@@ -1,4 +1,5 @@
 use crate::buffer::PyBuffer;
+use crate::sequence::{PySequenceMethods};
 use crate::builtins::pystr::PyStrRef;
 use crate::common::hash::PyHash;
 use crate::common::lock::PyRwLock;
@@ -50,6 +51,7 @@ pub(crate) type DescrGetFunc =
     fn(PyObjectRef, Option<PyObjectRef>, Option<PyObjectRef>, &VirtualMachine) -> PyResult;
 pub(crate) type DescrSetFunc =
     fn(PyObjectRef, PyObjectRef, Option<PyObjectRef>, &VirtualMachine) -> PyResult<()>;
+pub(crate) type SequenceFunc = fn(&PyObjectRef, &VirtualMachine) -> PyResult<Box<dyn PySequenceMethods>>;
 pub(crate) type HashFunc = fn(&PyObjectRef, &VirtualMachine) -> PyResult<PyHash>;
 pub(crate) type RichCompareFunc = fn(
     &PyObjectRef,
@@ -73,7 +75,7 @@ pub struct PyTypeSlots {
 
     // Method suites for standard classes
     // tp_as_number
-    // tp_as_sequence
+    pub as_sequence: Option<SequenceFunc>,
     // tp_as_mapping
 
     // More standard operations (here for binary compatibility)
@@ -550,4 +552,35 @@ where
     fn iter(zelf: PyRef<Self>, _vm: &VirtualMachine) -> PyResult {
         Ok(zelf.into_object())
     }
+}
+
+#[derive(Debug)]
+pub enum SequenceProcImpl {
+    Length,
+    Concat,
+    Repeat,
+    Item,
+    ConcatInplace,
+    RepeatInplace,
+    GetSlice,
+    SetSlice,
+    GetItem,
+    SetItem,
+    Contains
+}
+
+#[pyimpl]
+pub trait AsSequence: PyValue {
+    #[pyslot]
+    fn tp_as_sequence(zelf: &PyObjectRef, vm: &VirtualMachine) -> PyResult<Box<dyn PySequenceMethods>> {
+        if let Some(zelf) = zelf.downcast_ref::<Self>() {
+            Self::get_sequence(zelf, vm)
+        } else {
+            Err(vm.new_type_error("unexpected payload for get_sequence".to_owned()))
+        }
+    }
+
+    fn get_sequence(zelf: &PyRef<Self>, vm: &VirtualMachine) -> PyResult<Box<dyn PySequenceMethods>>;
+
+    fn check_impl_exists(method: SequenceProcImpl) -> bool;
 }

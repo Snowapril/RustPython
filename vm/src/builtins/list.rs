@@ -17,9 +17,11 @@ use crate::common::lock::{
     PyMappedRwLockReadGuard, PyRwLock, PyRwLockReadGuard, PyRwLockWriteGuard,
 };
 use crate::function::OptionalArg;
-use crate::sequence::{self, SimpleSeq};
+use crate::sequence::{self, SimpleSeq, PySequenceMethods};
 use crate::sliceable::{PySliceableSequence, PySliceableSequenceMut, SequenceIndex};
-use crate::slots::{Comparable, Hashable, Iterable, PyComparisonOp, PyIter, Unhashable};
+use crate::slots::{
+    Comparable, Hashable, Iterable, PyComparisonOp, PyIter, Unhashable, AsSequence, SequenceProcImpl
+};
 use crate::utils::Either;
 use crate::vm::{ReprGuard, VirtualMachine};
 use crate::{
@@ -84,7 +86,7 @@ pub(crate) struct SortOptions {
 
 pub type PyListRef = PyRef<PyList>;
 
-#[pyimpl(with(Iterable, Hashable, Comparable), flags(BASETYPE))]
+#[pyimpl(with(Iterable, Hashable, Comparable, AsSequence), flags(BASETYPE))]
 impl PyList {
     #[pymethod]
     pub(crate) fn append(&self, x: PyObjectRef) {
@@ -412,6 +414,89 @@ impl PyList {
         };
         std::mem::swap(self.borrow_vec_mut().deref_mut(), &mut elements);
         Ok(())
+    }
+}
+
+impl AsSequence for PyList {
+    fn get_sequence(zelf: &PyRef<Self>, vm: &VirtualMachine) -> PyResult<Box<dyn PySequenceMethods>> {
+        let list = *zelf.clone();
+        Ok(Box::new(list))
+    }
+
+    fn check_impl_exists(method: SequenceProcImpl) -> bool {
+        match method {
+            SequenceProcImpl::Length | 
+            SequenceProcImpl::Concat |
+            SequenceProcImpl::Repeat |
+            SequenceProcImpl::ConcatInplace |
+            SequenceProcImpl::RepeatInplace |
+            SequenceProcImpl::GetItem |
+            SequenceProcImpl::SetItem |
+            SequenceProcImpl::Contains => true,
+            _ => false
+        }
+    }
+}
+
+impl PySequenceMethods for PyList {
+    fn length(&self) -> PyResult<usize> {
+        Ok(self.len())
+    }
+    
+    fn concat(&self, other: PyObjectRef, vm: &VirtualMachine) -> PyResult {
+        unreachable!("")
+    }
+    
+    fn repeat(&self, count: usize, vm: &VirtualMachine) -> PyResult {
+        unreachable!("")
+    }
+    
+    fn concat_inplace(&self, other: PyObjectRef, vm: &VirtualMachine) -> PyObjectRef {
+        unreachable!("")
+    }
+    
+    fn repeat_inplace(&self, other: PyObjectRef, vm: &VirtualMachine) -> PyObjectRef {
+        unreachable!("")
+    }
+    
+    fn get_slice(&self, slice: PySliceRef, vm: &VirtualMachine) -> PyResult {
+        PyList::getitem(self, slice, vm)
+    }
+    
+    fn set_slice(&self, slice: PySliceRef, sec: PyIterable, vm: &VirtualMachine) -> PyResult<()> {
+        self.setslice(slice, sec, vm)
+    }
+
+    fn del_slice(&self, slice: PySliceRef, vm: &VirtualMachine) -> PyResult<()> {
+        self.delslice(slice, vm)
+    }
+
+    fn get_item(&self, i: isize, vm: &VirtualMachine) -> PyResult {
+        PyList::getitem(self, i, vm)
+    }
+
+    fn set_item(&self, i: isize, v: PyObjectRef, vm: &VirtualMachine) -> PyResult<()> {
+        self.setitem(i, v, vm)
+    }
+
+    fn del_item(&self, i: isize, vm: &VirtualMachine) -> PyResult<()> {
+        self.delindex(i, vm)
+    }
+
+    fn count(&self, value: PyObjectRef, vm: &VirtualMachine) -> PyResult<usize> {
+        unreachable!("")
+    }
+
+    fn contains(&self, value: PyObjectRef, vm: &VirtualMachine) -> PyResult<bool> {
+        self.contains(value, vm)
+    }
+
+    fn index(&self, value: PyObjectRef, vm: &VirtualMachine) -> PyResult<usize> {
+        self.index(value, OptionalArg::Missing, OptionalArg::Missing, vm)
+    }
+    
+    fn to_vec(&self, vm: &VirtualMachine) -> PyResult<Vec<PyObjectRef>> {
+        self.elements.get_mut()
     }
 }
 
