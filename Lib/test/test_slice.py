@@ -244,8 +244,6 @@ class SliceTest(unittest.TestCase):
             self.assertEqual(s.indices(15), t.indices(15))
             self.assertNotEqual(id(s), id(t))
 
-    # TODO: RUSTPYTHON
-    @unittest.expectedFailure
     def test_cycle(self):
         class myobj(): pass
         o = myobj()
