@@ -3,6 +3,8 @@ use std::ops::Range;
 use std::string::ToString;
 use std::{char, ffi, fmt};
 
+use crossbeam_utils::atomic::AtomicCell;
+
 use itertools::Itertools;
 use num_traits::ToPrimitive;
 use unic_ucd_bidi::BidiClass;
@@ -12,7 +14,11 @@ use unicode_casing::CharExt;
 
 use super::bytes::PyBytesRef;
 use super::dict::PyDict;
-use super::int::{PyInt, PyIntRef};
+use super::int::{try_to_primitive, PyInt, PyIntRef};
+use super::iter::{
+    IterStatus,
+    IterStatus::{Active, Exhausted},
+};
 use super::pytype::PyTypeRef;
 use crate::anystr::{self, adjust_indices, AnyStr, AnyStrContainer, AnyStrWrapper};
 use crate::exceptions::IntoPyException;
@@ -113,6 +119,7 @@ impl TryIntoRef<PyStr> for &str {
 pub struct PyStrIterator {
     string: PyStrRef,
     position: PyAtomic<usize>,
+    status: AtomicCell<IterStatus>,
 }
 
 impl PyValue for PyStrIterator {
@@ -122,20 +129,58 @@ impl PyValue for PyStrIterator {
 }
 
 #[pyimpl(with(PyIter))]
-impl PyStrIterator {}
+impl PyStrIterator {
+    #[pymethod(magic)]
+    fn length_hint(&self) -> usize {
+        match self.status.load() {
+            Active => {
+                let pos = self.position.load(atomic::Ordering::SeqCst);
+                self.string.len().saturating_sub(pos)
+            }
+            Exhausted => 0,
+        }
+    }
+
+    #[pymethod(magic)]
+    fn setstate(&self, state: PyObjectRef, vm: &VirtualMachine) -> PyResult<()> {
+        // When we're exhausted, just return.
+        if let Exhausted = self.status.load() {
+            return Ok(());
+        }
+
+        // Max for position is list.len() - 1.
+        let position = str_state(self.string.len(), state, vm)?;
+        self.position.store(position, atomic::Ordering::SeqCst);
+        Ok(())
+    }
+
+    #[pymethod(magic)]
+    fn reduce(&self, vm: &VirtualMachine) -> PyResult {
+        let pos = if let Exhausted = self.status.load() {
+            None
+        } else {
+            Some(self.position.load(atomic::Ordering::Relaxed))
+        };
+        str_reduce(self.string.clone(), pos, false, vm)
+    }
+}
 
 impl PyIter for PyStrIterator {
     fn next(zelf: &PyRef<Self>, vm: &VirtualMachine) -> PyResult {
+        if let Exhausted = zelf.status.load() {
+            return Err(vm.new_stop_iteration());
+        }
         let value = &*zelf.string.value;
         let mut start = zelf.position.load(atomic::Ordering::SeqCst);
         loop {
             if start == value.len() {
+                zelf.status.store(Exhausted);
                 return Err(vm.new_stop_iteration());
             }
-            let ch = value[start..]
-                .chars()
-                .next()
-                .ok_or_else(|| vm.new_stop_iteration())?;
+            let ch = value[start..].chars().next().ok_or_else(|| {
+                zelf.status.store(Exhausted);
+                vm.new_stop_iteration()
+            })?;
 
             match zelf.position.compare_exchange_weak(
                 start,
@@ -1077,6 +1122,7 @@ impl PyStr {
 
     #[pymethod(magic)]
     fn reversed(zelf: PyRef<Self>) -> PyStrReverseIterator {
+        let final_position = zelf.len();
         PyStrReverseIterator {
             position: Radium::new(zelf.byte_len()),
             string: zelf,
@@ -1123,6 +1169,7 @@ impl Iterable for PyStr {
         Ok(PyStrIterator {
             position: Radium::new(0),
             string: zelf,
+            status: AtomicCell::new(Active),
         }
         .into_object(vm))
     }
@@ -1195,6 +1242,38 @@ impl FindArgs {
         let range = adjust_indices(self.start, self.end, len);
         (self.sub, range)
     }
+}
+
+// Common reducer for forward and reverse str iterators.
+fn str_reduce(
+    list: PyRef<PyStr>,
+    position: Option<usize>,
+    reverse: bool,
+    vm: &VirtualMachine,
+) -> PyResult {
+    let attr = if reverse { "reversed" } else { "iter" };
+    let iter = vm.get_attribute(vm.builtins.clone(), attr)?;
+    let elems = match position {
+        None => vec![iter, vm.ctx.new_tuple(vec![vm.ctx.new_list(vec![])])],
+        Some(position) => vec![
+            iter,
+            vm.ctx.new_tuple(vec![list.into_object()]),
+            vm.ctx.new_int(position),
+        ],
+    };
+    Ok(vm.ctx.new_tuple(elems))
+}
+
+// Common function to extract state. Clamps it in range [0, length].
+fn str_state(length: usize, state: PyObjectRef, vm: &VirtualMachine) -> PyResult<usize> {
+    let position = state
+        .payload::<PyInt>()
+        .ok_or_else(|| vm.new_type_error("an integer is required.".to_owned()))?;
+    let position = std::cmp::min(
+        try_to_primitive(position.as_bigint(), vm).unwrap_or(0),
+        length,
+    );
+    Ok(position)
 }
 
 pub fn init(ctx: &PyContext) {
