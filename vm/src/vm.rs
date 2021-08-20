@@ -26,7 +26,7 @@ use crate::codecs::CodecsRegistry;
 use crate::common::{hash::HashSecret, lock::PyMutex, rc::PyRc};
 #[cfg(feature = "rustpython-compiler")]
 use crate::compile::{self, CompileError, CompileErrorType, CompileOpts};
-use crate::exceptions::{self, PyBaseException, PyBaseExceptionRef};
+use crate::exceptions::{self, PyExceptionMethod, PyBaseException, PyBaseExceptionRef};
 use crate::frame::{ExecutionResult, Frame, FrameRef};
 use crate::function::{FuncArgs, IntoFuncArgs};
 use crate::scope::Scope;

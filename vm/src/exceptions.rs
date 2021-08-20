@@ -22,6 +22,16 @@ use std::fmt;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
 
+#[pyimpl]
+pub trait PyExceptionMethod: PyValue {
+    fn new(args: Vec<PyObjectRef>, vm: &VirtualMachine) -> Self;
+
+    #[pyslot]
+    fn tp_new(cls: PyTypeRef, args: FuncArgs, vm: &VirtualMachine) -> PyResult<PyRef<Self>> {
+        Self::new(args.args, vm).into_ref_with_type(vm, cls)
+    }
+}
+
 #[pyclass(module = false, name = "BaseException")]
 pub struct PyBaseException {
     traceback: PyRwLock<Option<PyTracebackRef>>,
@@ -52,21 +62,6 @@ impl PyValue for PyBaseException {
 
 #[pyimpl(flags(BASETYPE, HAS_DICT))]
 impl PyBaseException {
-    pub(crate) fn new(args: Vec<PyObjectRef>, vm: &VirtualMachine) -> PyBaseException {
-        PyBaseException {
-            traceback: PyRwLock::new(None),
-            cause: PyRwLock::new(None),
-            context: PyRwLock::new(None),
-            suppress_context: AtomicCell::new(false),
-            args: PyRwLock::new(PyTupleRef::with_elements(args, &vm.ctx)),
-        }
-    }
-
-    #[pyslot]
-    fn tp_new(cls: PyTypeRef, args: FuncArgs, vm: &VirtualMachine) -> PyResult<PyRef<Self>> {
-        PyBaseException::new(args.args, vm).into_ref_with_type(vm, cls)
-    }
-
     #[pymethod(magic)]
     fn init(&self, args: FuncArgs, vm: &VirtualMachine) -> PyResult<()> {
         *self.args.write() = PyTupleRef::with_elements(args.args, &vm.ctx);
@@ -152,6 +147,18 @@ impl PyBaseException {
         let repr_args = exception_args_as_string(vm, zelf.args(), false);
         let cls = zelf.class();
         format!("{}({})", cls.name, repr_args.iter().format(", "))
+    }
+}
+
+impl PyExceptionMethod for PyBaseException {
+    fn new(args: Vec<PyObjectRef>, vm: &VirtualMachine) -> Self {
+        Self {
+            traceback: PyRwLock::new(None),
+            cause: PyRwLock::new(None),
+            context: PyRwLock::new(None),
+            suppress_context: AtomicCell::new(false),
+            args: PyRwLock::new(PyTupleRef::with_elements(args, &vm.ctx)),
+        }
     }
 }
 
@@ -523,8 +530,8 @@ pub fn create_exception_type(name: &str, base: &PyTypeRef) -> PyTypeRef {
 }
 
 impl ExceptionZoo {
-    pub(crate) fn init() -> Self {
-        let base_exception_type = PyBaseException::init_bare_type().clone();
+    pub(crate) fn init() -> Self {PyBaseException
+        let base_exception_type = ::init_bare_type().clone();
 
         // Sorted By Hierarchy then alphabetized.
         let system_exit = create_exception_type("SystemExit", &base_exception_type);
