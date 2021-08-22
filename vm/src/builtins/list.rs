@@ -260,9 +260,10 @@ impl PyList {
 
     #[pymethod]
     fn count(&self, needle: PyObjectRef, vm: &VirtualMachine) -> PyResult<usize> {
+        let elements = self.borrow_vec().to_vec();
         let mut count: usize = 0;
-        for element in self.borrow_vec().to_vec().iter() {
-            if vm.identical_or_equal(element, &needle)? {
+        for elem in elements.iter() {
+            if vm.identical_or_equal(elem, &needle)? {
                 count += 1;
             }
         }
@@ -271,8 +272,9 @@ impl PyList {
 
     #[pymethod(magic)]
     fn contains(&self, needle: PyObjectRef, vm: &VirtualMachine) -> PyResult<bool> {
-        for element in self.borrow_vec().to_vec().iter() {
-            if vm.identical_or_equal(element, &needle)? {
+        let elements = self.borrow_vec().to_vec();
+        for elem in elements.iter() {
+            if vm.identical_or_equal(elem, &needle)? {
                 return Ok(true);
             }
         }
