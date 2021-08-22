@@ -304,9 +304,8 @@ impl PyList {
                 stop = 0;
             }
         }
-        for (index, element) in self
-            .borrow_vec()
-            .to_vec()
+        let elements = self.borrow_vec().to_vec();
+        for (index, element) in elements
             .iter()
             .enumerate()
             .take(stop as usize)
@@ -337,8 +336,9 @@ impl PyList {
 
     #[pymethod]
     fn remove(&self, needle: PyObjectRef, vm: &VirtualMachine) -> PyResult<()> {
+        let elements = self.borrow_vec().to_vec();
         let mut ri: Option<usize> = None;
-        for (index, element) in self.borrow_vec().to_vec().iter().enumerate() {
+        for (index, element) in elements.iter().enumerate() {
             if vm.identical_or_equal(element, &needle)? {
                 ri = Some(index);
                 break;
