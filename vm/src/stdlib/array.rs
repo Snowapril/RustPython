@@ -1,6 +1,7 @@
 use crate::buffer::{BufferOptions, PyBuffer, ResizeGuard};
 use crate::builtins::float::IntoPyFloat;
 use crate::builtins::list::{PyList, PyListRef};
+use crate::builtins::map::{PyMappingMethods, PyMappingProtocol};
 use crate::builtins::pystr::{PyStr, PyStrRef};
 use crate::builtins::pytype::PyTypeRef;
 use crate::builtins::slice::PySliceRef;
@@ -12,8 +13,8 @@ use crate::common::lock::{
     PyRwLockWriteGuard,
 };
 use crate::function::OptionalArg;
-use crate::sliceable::{saturate_index, PySliceableSequence, PySliceableSequenceMut};
-use crate::slots::{AsBuffer, Comparable, Iterable, PyComparisonOp, PyIter};
+use crate::sliceable::{saturate_index, PySliceableSequence, PySliceableSequenceMut, SequenceIndex};
+use crate::slots::{AsBuffer, AsMapping, Comparable, Iterable, PyComparisonOp, PyIter};
 use crate::utils::Either;
 use crate::{
     IdProtocol, IntoPyObject, PyClassImpl, PyComparisonValue, PyIterable, PyObjectRef, PyRef,
@@ -522,7 +523,7 @@ impl From<ArrayContentType> for PyArray {
     }
 }
 
-#[pyimpl(flags(BASETYPE), with(Comparable, AsBuffer, Iterable))]
+#[pyimpl(flags(BASETYPE), with(Comparable, AsBuffer, AsMapping, Iterable))]
 impl PyArray {
     fn read(&self) -> PyRwLockReadGuard<'_, ArrayContentType> {
         self.array.read()
@@ -994,6 +995,40 @@ impl AsBuffer for PyArray {
             },
         };
         Ok(Box::new(buf))
+    }
+}
+
+impl AsMapping for PyArray {
+    fn get_impl_table() -> PyResult<PyMappingMethods> {
+        Ok( PyMappingMethods {
+            length: Some(Self::length),
+            subscript: Some(Self::subscript),
+            ass_subscript: Some(Self::ass_subscript),
+        })
+    }
+}
+
+impl PyMappingProtocol for PyArray {
+    fn length(map: PyObjectRef, vm: &VirtualMachine) -> PyResult<usize> {
+        let array = PyArrayRef::try_from_object(vm, map)?;
+        Ok(array.len())
+    }
+    fn subscript(map: PyObjectRef, needle: PyObjectRef, vm: &VirtualMachine) -> PyResult {
+        let array = PyArrayRef::try_from_object(vm, map)?;
+        match SequenceIndex::try_from_object(vm, needle)? {
+            SequenceIndex::Int(i) => array.getitem(Either::A(i), vm),
+            SequenceIndex::Slice(slice) => array.getitem(Either::B(slice), vm,)
+        }
+    }
+
+    fn ass_subscript(map: PyObjectRef, needle: &PyObjectRef, obj: &PyObjectRef, vm: &VirtualMachine) -> PyResult<()>
+    {
+        let array = PyArrayRef::try_from_object(vm, map)?;
+        match SequenceIndex::try_from_object(vm, needle)? {
+            SequenceIndex::Int(i) => Self::setitem(array, Either::A(i), obj, vm),
+            SequenceIndex::Slice(slice) => Self::setitem(array, Either::B(slice), obj, vm
+        ),
+        }
     }
 }
 

@@ -7,6 +7,7 @@ use super::pytype::PyTypeRef;
 use super::tuple::PyTupleRef;
 use crate::anystr::{self, AnyStr};
 use crate::buffer::{BufferOptions, PyBuffer, ResizeGuard};
+use crate::builtins::map::{PyMappingMethods, PyMappingProtocol};
 use crate::bytesinner::{
     bytes_decode, bytes_from_object, value_from_object, ByteInnerFindOptions, ByteInnerNewOptions,
     ByteInnerPaddingOptions, ByteInnerSplitOptions, ByteInnerTranslateOptions, DecodeArgs,
@@ -20,12 +21,12 @@ use crate::common::lock::{
 };
 use crate::function::{FuncArgs, OptionalArg, OptionalOption};
 use crate::sliceable::{PySliceableSequence, PySliceableSequenceMut, SequenceIndex};
-use crate::slots::{AsBuffer, Comparable, Hashable, Iterable, PyComparisonOp, PyIter, Unhashable};
+use crate::slots::{AsBuffer, AsMapping, Comparable, Hashable, Iterable, PyComparisonOp, PyIter, Unhashable};
 use crate::utils::Either;
 use crate::vm::VirtualMachine;
 use crate::{
     IdProtocol, IntoPyObject, PyClassDef, PyClassImpl, PyComparisonValue, PyContext, PyIterable,
-    PyObjectRef, PyRef, PyResult, PyValue, TypeProtocol,
+    PyObjectRef, PyRef, PyResult, PyValue, TryFromObject, TypeProtocol
 };
 use bstr::ByteSlice;
 use crossbeam_utils::atomic::AtomicCell;
@@ -97,7 +98,7 @@ pub(crate) fn init(context: &PyContext) {
     PyByteArrayIterator::extend_class(context, &context.types.bytearray_iterator_type);
 }
 
-#[pyimpl(flags(BASETYPE), with(Hashable, Comparable, AsBuffer, Iterable))]
+#[pyimpl(flags(BASETYPE), with(Hashable, Comparable, AsBuffer, AsMapping, Iterable))]
 impl PyByteArray {
     #[pyslot]
     fn tp_new(cls: PyTypeRef, _args: FuncArgs, vm: &VirtualMachine) -> PyResult<PyRef<Self>> {
@@ -677,6 +678,33 @@ impl AsBuffer for PyByteArray {
             },
         };
         Ok(Box::new(buf))
+    }
+}
+
+impl AsMapping for PyByteArray {
+    fn get_impl_table() -> PyResult<PyMappingMethods> {
+        Ok( PyMappingMethods {
+            length: Some(Self::length),
+            subscript: Some(Self::subscript),
+            ass_subscript: None,
+        })
+    }
+}
+
+impl PyMappingProtocol for PyByteArray {
+    fn length(map: PyObjectRef, vm: &VirtualMachine) -> PyResult<usize> {
+        let bytearray = PyByteArrayRef::try_from_object(vm, map)?;
+        Ok(bytearray.len())
+    }
+    fn subscript(map: PyObjectRef, needle: PyObjectRef, vm: &VirtualMachine) -> PyResult {
+        let bytearray = PyByteArrayRef::try_from_object(vm, map)?;
+        bytearray.getitem(needle, vm)
+    }
+
+    fn ass_subscript(map: PyObjectRef, index: &PyObjectRef, value: &PyObjectRef, vm: &VirtualMachine) -> PyResult<()>
+    {
+        let bytearray = PyByteArrayRef::try_from_object(vm, map)?;
+        Self::setitem(bytearray, needle, value, vm)
     }
 }
 

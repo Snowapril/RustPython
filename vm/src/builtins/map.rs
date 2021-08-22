@@ -3,7 +3,8 @@ use crate::function::Args;
 use crate::iterator;
 use crate::slots::PyIter;
 use crate::vm::VirtualMachine;
-use crate::{PyClassImpl, PyContext, PyObjectRef, PyRef, PyResult, PyValue};
+use crate::pyobject::TypeProtocol;
+use crate::{PyClassImpl, PyContext, PyObjectRef, PyRef, PyResult, PyValue, TryFromObject};
 
 /// map(func, *iterables) --> map object
 ///
@@ -67,4 +68,32 @@ impl PyIter for PyMap {
 
 pub fn init(context: &PyContext) {
     PyMap::extend_class(context, &context.types.map_type);
+}
+
+#[derive(Default)]
+pub struct PyMappingMethods {
+    pub length: Option<fn(PyObjectRef, &VirtualMachine) -> PyResult<usize>>,
+    pub subscript: Option<fn(PyObjectRef, PyObjectRef, &VirtualMachine) -> PyResult>,
+    pub ass_subscript: Option<fn(PyObjectRef, &PyObjectRef, &PyObjectRef, &VirtualMachine) -> PyResult<()>>,
+}
+
+pub trait PyMappingProtocol: PyValue {
+    fn length(map: PyObjectRef, vm: &VirtualMachine) -> PyResult<usize>;
+    fn subscript(map: PyObjectRef, needle: PyObjectRef, vm: &VirtualMachine) -> PyResult;
+    fn ass_subscript(map: PyObjectRef, index: &PyObjectRef, values: &PyObjectRef, vm: &VirtualMachine) -> PyResult<()>;
+}
+
+impl TryFromObject for PyMappingMethods {
+    fn try_from_object(vm: &VirtualMachine, obj: PyObjectRef) -> PyResult<Self> {
+        let obj_cls = obj.class();
+        for cls in obj_cls.iter_mro() {
+            if let Some(f) = cls.slots.as_mapping.as_ref() {
+                return f(&obj, vm);
+            }
+        }
+        Err(vm.new_type_error(format!(
+            "a dict-like object is required, not '{}'",
+            obj_cls.name
+        )))
+    }
 }
