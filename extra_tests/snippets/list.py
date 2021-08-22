@@ -656,3 +656,13 @@ l = [1, 2, 3, m, 4]
 m.list = l
 l.remove(4) 
 assert_raises(ValueError, lambda: l.index(4)) # element 4 must not be in the list
+
+class MutatingCompare:
+    def __eq__(self, other):
+        self.d.pop()
+        return True
+
+m = MutatingCompare()
+d = deque([1, 2, 3, m, 4])
+m.d = d
+d.count(4)
