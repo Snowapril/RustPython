@@ -13,18 +13,19 @@ use super::iter::{
 use super::pytype::PyTypeRef;
 use super::slice::PySliceRef;
 use super::PyInt;
+use crate::builtins::dict::PyMappingInternal;
 use crate::common::lock::{
     PyMappedRwLockReadGuard, PyRwLock, PyRwLockReadGuard, PyRwLockWriteGuard,
 };
 use crate::function::{FuncArgs, OptionalArg};
 use crate::sequence::{self, SimpleSeq};
 use crate::sliceable::{PySliceableSequence, PySliceableSequenceMut, SequenceIndex};
-use crate::slots::{Comparable, Hashable, Iterable, PyComparisonOp, PyIter, Unhashable};
+use crate::slots::{AsMapping, Comparable, Hashable, Iterable, PyComparisonOp, PyIter, Unhashable};
 use crate::utils::Either;
 use crate::vm::{ReprGuard, VirtualMachine};
 use crate::{
-    PyClassDef, PyClassImpl, PyComparisonValue, PyContext, PyIterable, PyObjectRef, PyRef,
-    PyResult, PyValue, TryFromObject, TypeProtocol,
+    IntoPyRef, PyClassDef, PyClassImpl, PyComparisonValue, PyContext, PyIterable, PyObjectRef,
+    PyRef, PyResult, PyValue, TryFromObject, TypeProtocol,
 };
 
 /// Built-in mutable sequence.
@@ -410,6 +411,28 @@ impl PyList {
         };
         std::mem::swap(self.borrow_vec_mut().deref_mut(), &mut elements);
         Ok(())
+    }
+}
+
+impl PyMappingInternal for PyList {
+    #[inline]
+    fn length(&self) -> usize {
+        self.len()
+    }
+
+    #[inline]
+    fn subscript(&self, needle: PyObjectRef, vm: &VirtualMachine) -> PyResult {
+        Self::getitem(self.into_pyref(vm), needle, vm)
+    }
+
+    #[inline]
+    fn ass_subscript(
+        &self,
+        needle: PyObjectRef,
+        value: PyObjectRef,
+        vm: &VirtualMachine,
+    ) -> PyResult<()> {
+        self.setitem(needle, value, vm)
     }
 }
 

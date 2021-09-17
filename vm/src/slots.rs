@@ -1,5 +1,5 @@
 use crate::buffer::PyBuffer;
-use crate::builtins::{PyStrRef, PyTypeRef};
+use crate::builtins::{dict::PyMapping, PyStrRef, PyTypeRef};
 use crate::common::hash::PyHash;
 use crate::common::lock::PyRwLock;
 use crate::function::{FromArgs, FuncArgs, OptionalArg};
@@ -62,6 +62,7 @@ pub(crate) type GetattroFunc = fn(PyObjectRef, PyStrRef, &VirtualMachine) -> PyR
 pub(crate) type SetattroFunc =
     fn(&PyObjectRef, PyStrRef, Option<PyObjectRef>, &VirtualMachine) -> PyResult<()>;
 pub(crate) type BufferFunc = fn(&PyObjectRef, &VirtualMachine) -> PyResult<PyBuffer>;
+pub(crate) type MappingFunc = fn(&PyObjectRef, &VirtualMachine) -> PyResult<PyMapping>;
 pub(crate) type IterFunc = fn(PyObjectRef, &VirtualMachine) -> PyResult;
 pub(crate) type IterNextFunc = fn(&PyObjectRef, &VirtualMachine) -> PyResult;
 
@@ -75,7 +76,7 @@ pub struct PyTypeSlots {
     // Method suites for standard classes
     // tp_as_number
     // tp_as_sequence
-    // tp_as_mapping
+    pub as_mapping: Option<MappingFunc>,
 
     // More standard operations (here for binary compatibility)
     pub hash: AtomicCell<Option<HashFunc>>,
@@ -520,6 +521,19 @@ pub trait AsBuffer: PyValue {
     }
 
     fn get_buffer(zelf: &PyRef<Self>, vm: &VirtualMachine) -> PyResult<PyBuffer>;
+}
+
+#[pyimpl]
+pub trait AsMapping: PyValue {
+    #[pyslot]
+    fn tp_as_mapping(zelf: &PyObjectRef, vm: &VirtualMachine) -> PyResult<PyMapping> {
+        let zelf = zelf
+            .downcast_ref()
+            .ok_or_else(|| vm.new_type_error("unexpected payload for get_mapping".to_owned()))?;
+        Self::get_mapping(zelf, vm)
+    }
+
+    fn get_mapping(zelf: &PyRef<Self>, vm: &VirtualMachine) -> PyResult<PyMapping>;
 }
 
 #[pyimpl]

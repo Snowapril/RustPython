@@ -6,17 +6,20 @@ use super::pystr::PyStrRef;
 use super::pytype::PyTypeRef;
 use super::set::PySet;
 use super::IterStatus;
+use crate::common::rc::PyRc;
 use crate::dictdatatype::{self, DictKey};
 use crate::exceptions::PyBaseExceptionRef;
 use crate::function::{FuncArgs, KwArgs, OptionalArg};
 use crate::iterator;
 use crate::slots::{Comparable, Hashable, Iterable, PyComparisonOp, PyIter, Unhashable};
 use crate::vm::{ReprGuard, VirtualMachine};
+use crate::PyThreadingConstraint;
 use crate::{
     IdProtocol, IntoPyObject, ItemProtocol, PyArithmaticValue::*, PyAttributes, PyClassDef,
     PyClassImpl, PyComparisonValue, PyContext, PyIterable, PyObjectRef, PyRef, PyResult, PyValue,
-    TryFromObject, TypeProtocol,
+    TryFromBorrowedObject, TypeProtocol,
 };
+use std::fmt::Debug;
 
 pub type DictContentType = dictdatatype::Dict;
 
@@ -880,25 +883,46 @@ pub(crate) fn init(context: &PyContext) {
     PyDictReverseItemIterator::extend_class(context, &context.types.dict_reverseitemiterator_type);
 }
 
-pub struct PyMapping {
-    dict: PyDictRef,
+pub trait PyMappingInternal: Debug + PyThreadingConstraint {
+    fn length(&self) -> usize;
+    fn subscript(&self, needle: PyObjectRef, vm: &VirtualMachine) -> PyResult;
+    fn ass_subscript(
+        &self,
+        needle: PyObjectRef,
+        value: PyObjectRef,
+        vm: &VirtualMachine,
+    ) -> PyResult<()>;
 }
 
-impl TryFromObject for PyMapping {
-    fn try_from_object(vm: &VirtualMachine, obj: PyObjectRef) -> PyResult<Self> {
-        let dict = vm.ctx.new_dict();
-        PyDict::merge(
-            &dict.entries,
-            OptionalArg::Present(obj),
-            KwArgs::default(),
-            vm,
-        )?;
-        Ok(PyMapping { dict })
-    }
+pub struct PyMapping {
+    pub dict: PyDictRef,
+    pub(crate) internal: PyRc<dyn PyMappingInternal>,
 }
 
 impl PyMapping {
+    pub fn new(obj: PyDictRef, mapping: impl PyMappingInternal + 'static) -> Self {
+        Self {
+            dict: obj,
+            internal: PyRc::new(mapping),
+        }
+    }
+
     pub fn into_dict(self) -> PyDictRef {
         self.dict
+    }
+}
+
+impl TryFromBorrowedObject for PyMapping {
+    fn try_from_borrowed_object(vm: &VirtualMachine, obj: &PyObjectRef) -> PyResult<Self> {
+        let obj_cls = obj.class();
+        for cls in obj_cls.iter_mro() {
+            if let Some(f) = cls.slots.as_mapping.as_ref() {
+                return f(obj, vm);
+            }
+        }
+        Err(vm.new_type_error(format!(
+            "a dict-like object is required, not '{}'",
+            obj_cls.name()
+        )))
     }
 }

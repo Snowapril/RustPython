@@ -507,7 +507,7 @@ where
         let slot_ident = item_meta.slot_name()?;
         let slot_name = slot_ident.to_string();
         let tokens = {
-            const NON_ATOMIC_SLOTS: &[&str] = &["as_buffer"];
+            const NON_ATOMIC_SLOTS: &[&str] = &["as_buffer", "as_mapping"];
             if NON_ATOMIC_SLOTS.contains(&slot_name.as_str()) {
                 quote_spanned! { func.span() =>
                     slots.#slot_ident = Some(Self::#ident as _);
