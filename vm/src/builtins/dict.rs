@@ -420,10 +420,13 @@ impl AsMapping for PyDict {
     fn ass_subscript(
         zelf: PyObjectRef,
         needle: PyObjectRef,
-        value: PyObjectRef,
+        value: Option<PyObjectRef>,
         vm: &VirtualMachine,
     ) -> PyResult<()> {
-        Self::downcast_ref(&zelf, vm).map(|zelf| zelf.setitem(needle, value, vm))?
+        Self::downcast_ref(&zelf, vm).map(|zelf| match value {
+            Some(value) => zelf.setitem(needle, value, vm),
+            None => zelf.delitem(needle, vm),
+        })?
     }
 }
 
@@ -920,7 +923,7 @@ pub struct PyMapping {
     pub length: Option<fn(PyObjectRef, &VirtualMachine) -> PyResult<usize>>,
     pub subscript: Option<fn(PyObjectRef, PyObjectRef, &VirtualMachine) -> PyResult>,
     pub ass_subscript:
-        Option<fn(PyObjectRef, PyObjectRef, PyObjectRef, &VirtualMachine) -> PyResult<()>>,
+        Option<fn(PyObjectRef, PyObjectRef, Option<PyObjectRef>, &VirtualMachine) -> PyResult<()>>,
 }
 
 impl PyMapping {}
