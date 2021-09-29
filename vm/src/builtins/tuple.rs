@@ -3,10 +3,10 @@ use super::{
     iter::IterStatus::{self, Active, Exhausted},
     PyInt, PyTypeRef,
 };
-use crate::builtins::dict::PyMapping;
 use crate::common::hash::PyHash;
 use crate::{
     function::OptionalArg,
+    protocol::PyMapping,
     sequence::{self, SimpleSeq},
     sliceable::PySliceableSequence,
     slots::{

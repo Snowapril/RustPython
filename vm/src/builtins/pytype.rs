@@ -4,8 +4,8 @@ use super::{
 };
 use crate::common::{ascii, lock::PyRwLock};
 use crate::{
-    builtins::dict::PyMapping,
     function::{FuncArgs, KwArgs, OptionalArg},
+    protocol::PyMapping,
     slots::{self, Callable, PyTypeFlags, PyTypeSlots, SlotGetattro, SlotSetattro},
     utils::Either,
     IdProtocol, PyAttributes, PyClassImpl, PyContext, PyLease, PyObjectRef, PyRef, PyResult,

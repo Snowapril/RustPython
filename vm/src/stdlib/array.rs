@@ -12,11 +12,11 @@ mod array {
     };
     use crate::{
         builtins::{
-            dict::PyMapping, IntoPyFloat, PyByteArray, PyBytes, PyBytesRef, PyIntRef, PyList,
-            PyListRef, PySliceRef, PyStr, PyStrRef, PyTypeRef,
+            IntoPyFloat, PyByteArray, PyBytes, PyBytesRef, PyIntRef, PyList, PyListRef, PySliceRef,
+            PyStr, PyStrRef, PyTypeRef,
         },
         function::{ArgBytesLike, ArgIterable, OptionalArg},
-        protocol::{BufferInternal, BufferOptions, PyBuffer, ResizeGuard},
+        protocol::{BufferInternal, BufferOptions, PyBuffer, PyMapping, ResizeGuard},
         sliceable::{saturate_index, PySliceableSequence, PySliceableSequenceMut, SequenceIndex},
         slots::{
             AsBuffer, AsMapping, Comparable, Iterable, IteratorIterable, PyComparisonOp,
