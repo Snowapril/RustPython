@@ -20,7 +20,7 @@ use crate::{
     dictdatatype::Dict,
     exceptions,
     function::{IntoFuncArgs, IntoPyNativeFunc},
-    protocol::PyMapping,
+    protocol::PyMappingMethods,
     slots::{PyTypeFlags, PyTypeSlots},
     types::{create_type_with_slots, TypeZoo},
     VirtualMachine,
@@ -640,7 +640,7 @@ where
     T: IntoPyObject,
 {
     fn get_item(&self, key: T, vm: &VirtualMachine) -> PyResult {
-        if let Ok(map) = PyMapping::try_from_borrowed_object(vm, self) {
+        if let Ok(map) = PyMappingMethods::try_from_borrowed_object(vm, self) {
             if let Some(getitem) = map.subscript {
                 return getitem(self.clone(), key.into_pyobject(vm), vm);
             }
@@ -663,7 +663,7 @@ where
     }
 
     fn set_item(&self, key: T, value: PyObjectRef, vm: &VirtualMachine) -> PyResult<()> {
-        if let Ok(map) = PyMapping::try_from_borrowed_object(vm, self) {
+        if let Ok(map) = PyMappingMethods::try_from_borrowed_object(vm, self) {
             if let Some(setitem) = map.ass_subscript {
                 return setitem(self.clone(), key.into_pyobject(vm), Some(value), vm);
             }
@@ -681,7 +681,7 @@ where
     }
 
     fn del_item(&self, key: T, vm: &VirtualMachine) -> PyResult<()> {
-        if let Ok(map) = PyMapping::try_from_borrowed_object(vm, self) {
+        if let Ok(map) = PyMappingMethods::try_from_borrowed_object(vm, self) {
             if let Some(setitem) = map.ass_subscript {
                 return setitem(self.clone(), key.into_pyobject(vm), None, vm);
             }
