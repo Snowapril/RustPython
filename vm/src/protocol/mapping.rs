@@ -1,9 +1,9 @@
 use crate::{
-    builtins::dict::{PyDictItems, PyDictKeys, PyDictRef, PyDictValues},
+    builtins::dict::{PyDictKeys, PyDictRef, PyDictValues},
     builtins::list::PyList,
     vm::VirtualMachine,
-    IdProtocol, IntoPyObject, PyObjectRef, PyResult, TryFromBorrowedObject, TryFromObject,
-    TypeProtocol,
+    IdProtocol, IntoPyObject, ItemProtocol, PyObjectRef, PyResult, TryFromBorrowedObject,
+    TryFromObject, TypeProtocol,
 };
 use std::borrow::Borrow;
 use std::ops::Deref;
@@ -59,34 +59,6 @@ where
 {
     pub fn new(obj: T) -> Self {
         Self(obj)
-    }
-
-    pub fn as_object(&self) -> &PyObjectRef {
-        self.0.borrow()
-    }
-
-    pub fn size(&self, vm: &VirtualMachine) -> PyResult<usize> {
-        // TODO: need to add sequence protocol check before error
-        if let Ok(mapping) = PyMappingMethods::try_from_borrowed_object(vm, &self.0.borrow()) {
-            if let Some(length) = mapping.length {
-                return length(self.0.borrow().clone(), vm);
-            }
-        }
-        Err(vm.new_type_error(format!(
-            "object of type {} has no len()",
-            self.0.borrow().class()
-        )))
-    }
-
-    pub fn items(&self, vm: &VirtualMachine) -> PyResult {
-        if self.0.borrow().is(&vm.ctx.types.dict_type) {
-            Ok(
-                PyDictItems::new(PyDictRef::try_from_object(vm, self.0.borrow().clone())?)
-                    .into_pyobject(vm),
-            )
-        } else {
-            Self::method_output_as_list(self.0.borrow(), "items", vm)
-        }
     }
 
     pub fn keys(&self, vm: &VirtualMachine) -> PyResult {

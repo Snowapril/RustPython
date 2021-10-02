@@ -33,6 +33,7 @@ pub mod module {
         builtins::{PyDictRef, PyInt, PyListRef, PyStrRef, PyTupleRef, PyTypeRef},
         exceptions::IntoPyException,
         function::OptionalArg,
+        protocol::PyMapping,
         slots::SlotConstructor,
         stdlib::os::{
             errno_err, DirFd, FollowSymlinks, PathOrFd, PyPathLike, SupportFunc, TargetIsDirectory,
@@ -1037,8 +1038,21 @@ pub mod module {
     }
 
     #[cfg(any(target_os = "linux", target_os = "freebsd", target_os = "macos"))]
-    fn envp_from_dict(dict: PyDictRef, vm: &VirtualMachine) -> PyResult<Vec<CString>> {
-        dict.into_iter()
+    fn envp_from_dict(env: PyMapping, vm: &VirtualMachine) -> PyResult<Vec<CString>> {
+        let keys = env.keys(vm)?;
+        let values = env.values(vm)?;
+
+        let keys = PyListRef::try_from_object(vm, keys)
+            .map_err(|_| vm.new_type_error("env.keys() is not a list".to_owned()))?
+            .borrow_vec()
+            .to_vec();
+        let values = PyListRef::try_from_object(vm, values)
+            .map_err(|_| vm.new_type_error("env.values() is not a list".to_owned()))?
+            .borrow_vec()
+            .to_vec();
+
+        keys.into_iter()
+            .zip(values.into_iter())
             .map(|(k, v)| {
                 let k = PyPathLike::try_from_object(vm, k)?.into_bytes();
                 let v = PyPathLike::try_from_object(vm, v)?.into_bytes();
@@ -1073,7 +1087,7 @@ pub mod module {
         #[pyarg(positional)]
         args: crate::function::ArgIterable<PyPathLike>,
         #[pyarg(positional)]
-        env: crate::builtins::dict::PyMapping,
+        env: PyMapping,
         #[pyarg(named, default)]
         file_actions: Option<crate::function::ArgIterable<PyTupleRef>>,
         #[pyarg(named, default)]
@@ -1186,7 +1200,7 @@ pub mod module {
                 .map(|s| s.as_ptr() as _)
                 .chain(std::iter::once(std::ptr::null_mut()))
                 .collect();
-            let mut env = envp_from_dict(self.env.into_dict(), vm)?;
+            let mut env = envp_from_dict(self.env, vm)?;
             let envp: Vec<*mut libc::c_char> = env
                 .iter_mut()
                 .map(|s| s.as_ptr() as _)
