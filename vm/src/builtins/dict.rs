@@ -151,11 +151,6 @@ impl PyDict {
         PyDict { entries: dict }.into_ref_with_type(vm, class)
     }
 
-    #[pymethod(magic)]
-    fn bool(&self) -> bool {
-        !self.entries.is_empty()
-    }
-
     fn inner_cmp(
         zelf: &PyRef<Self>,
         other: &PyDictRef,
