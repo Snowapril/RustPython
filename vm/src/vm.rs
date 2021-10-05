@@ -800,6 +800,11 @@ impl VirtualMachine {
         self.new_exception_msg(memory_error_type, msg)
     }
 
+    pub fn new_system_error(&self, msg: String) -> PyBaseExceptionRef {
+        let system_error = self.ctx.exceptions.system_error.clone();
+        self.new_exception_msg(system_error, msg)
+    }
+
     pub fn new_stop_iteration(&self, value: Option<PyObjectRef>) -> PyBaseExceptionRef {
         let args = if let Some(value) = value {
             vec![value]
