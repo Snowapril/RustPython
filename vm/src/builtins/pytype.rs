@@ -106,6 +106,112 @@ impl PyType {
         Ok(new_type)
     }
 
+    fn new_get_bases() {}
+
+    fn new_impl(zelf: PyRef<Self>, vm: &VirtualMachine) -> PyRef<Self> {}
+
+    pub fn ready(&self, vm: &VirtualMachine) -> PyResult<()> {
+        if self.slots.flags.has_feature(PyTypeFlags::READY) {
+            // assert(_PyType_CheckConsistency(type));
+            return Ok(());
+        }
+        assert!(self.slots.flags.has_feature(PyTypeFlags::READYING));
+
+        self.slots.flags.set(PyTypeFlags::READYING, true);
+
+        // if !self.slots.flags.contains(PyTypeFlags::HEAPTYPE) {
+        //     self.slots.flags.set(PyTypeFlags::IMMUTABLETYPE);
+        // }
+
+        self.ready_ready(vm).map_err(|err| {
+            self.slots.flags.set(PyTypeFlags::READYING, false);
+            err
+        })?;
+
+        self.slots.flags.set(PyTypeFlags::READYING, false);
+        self.slots.flags.set(PyTypeFlags::READY, true);
+        // assert(_PyType_CheckConsistency(type));
+        Ok(())
+    }
+
+    // TODO : PyResult말고 다른거 return
+    fn ready_ready(&self, vm: &VirtualMachine) -> PyResult<()> {
+        if !self.ready_check(vm) {
+            return Err(vm.new_system_error("Type does not define the tp_name field.".to_owned()));
+        }
+
+        if !self.ready_set_dict() {
+            return Err(vm.new_type_error("Type already called ready_set_dict".to_owned()));
+        }
+        if !self.ready_set_bases() {
+            return Err(vm.new_type_error("Type already called ready_set_bases".to_owned()));
+        }
+        if !self.ready_mro() {
+            return Err(vm.new_type_error("Type already called ready_mro".to_owned()));
+        }
+        if !self.ready_set_new() {
+            return Err(vm.new_type_error("Type already called ready_set_new".to_owned()));
+        }
+        if !self.ready_fill_dict() {
+            return Err(vm.new_type_error("Type already called ready_fill_dict".to_owned()));
+        }
+        if !self.ready_inherit() {
+            return Err(vm.new_type_error("Type already called ready_inherit".to_owned()));
+        }
+        if !self.ready_set_hash() {
+            return Err(vm.new_type_error("Type already called ready_set_hash".to_owned()));
+        }
+        if !self.ready_add_subclasses() {
+            return Err(vm.new_type_error("Type already called ready_add_subclasses".to_owned()));
+        }
+
+        Ok(())
+    }
+
+    fn ready_check(&self, vm: &VirtualMachine) -> bool {
+        if self.slots.flags.has_feature(PyTypeFlags::METHOD_DESCR) {
+            assert!(self.slots.descr_get.load().is_some());
+        }
+
+        if self.slots.name.read().is_none() {
+            return false;
+        }
+
+        true
+    }
+
+    fn ready_set_dict(&self) -> bool {
+        true
+    }
+
+    fn ready_set_bases(&self) -> bool {
+        true
+    }
+
+    fn ready_mro(&self) -> bool {
+        true
+    }
+
+    fn ready_set_new(&self) -> bool {
+        true
+    }
+
+    fn ready_fill_dict(&self) -> bool {
+        true
+    }
+
+    fn ready_inherit(&self) -> bool {
+        true
+    }
+
+    fn ready_set_hash(&self) -> bool {
+        true
+    }
+
+    fn ready_add_subclasses(&self) -> bool {
+        true
+    }
+
     pub fn slot_name(&self) -> String {
         self.slots.name.read().as_ref().unwrap().to_string()
     }
@@ -663,6 +769,14 @@ impl PyType {
             .and_then(|doc| get_text_signature_from_internal_doc(self.name().as_str(), doc))
             .map(|signature| signature.to_string())
     }
+
+    fn solid_base(zelf: &PyRef<Self>, vm: &VirtualMachine) -> PyTypeRef {
+        // TODO: if extra_ivars(type, base) is true, return self not base
+        match &zelf.base {
+            Some(base) => Self::solid_base(&base, vm),
+            None => vm.ctx.types.object_type.clone(),
+        }
+    }
 }
 
 const SIGNATURE_END_MARKER: &str = ")\n--\n\n";
@@ -979,50 +1093,47 @@ fn calculate_meta_class(
 }
 
 fn best_base(bases: &[PyTypeRef], vm: &VirtualMachine) -> PyResult<PyTypeRef> {
-    // let mut base = None;
-    // let mut winner = None;
-
+    //let mut base: Option<PyTypeRef> = None;
+    //let mut winner: Option<PyTypeRef> = None;
+    //
+    //for base_i in bases {
+    //    if !base_i.slots.flags.has_feature(PyTypeFlags::BASETYPE) {
+    //        return Err(vm.new_type_error(format!(
+    //            "type '{}' is not an acceptable base type",
+    //            base_i.name()
+    //        )));
+    //    }
+    //
+    //    let candidate = PyType::solid_base(base_i, vm);
+    //    match winner {
+    //        Some(ref inner_winner) => {
+    //            if inner_winner.issubclass(&candidate) {
+    //            } else if candidate.issubclass(inner_winner) {
+    //                winner = Some(candidate);
+    //                base = Some(base_i.clone());
+    //            } else {
+    //                return Err(vm.new_type_error(
+    //                    "multiple bases have instance lay-out conflict".to_owned(),
+    //                ));
+    //            }
+    //        }
+    //        None => {
+    //            winner = Some(candidate);
+    //            base = Some(base_i.clone());
+    //        }
+    //    }
+    //}
+    //
+    //Ok(base.unwrap())
     for base_i in bases {
-        // base_proto = PyTuple_GET_ITEM(bases, i);
-        // if (!PyType_Check(base_proto)) {
-        //     PyErr_SetString(
-        //         PyExc_TypeError,
-        //         "bases must be types");
-        //     return NULL;
-        // }
-        // base_i = (PyTypeObject *)base_proto;
-        // if (base_i->slot_dict == NULL) {
-        //     if (PyType_Ready(base_i) < 0)
-        //         return NULL;
-        // }
-
         if !base_i.slots.flags.has_feature(PyTypeFlags::BASETYPE) {
             return Err(vm.new_type_error(format!(
                 "type '{}' is not an acceptable base type",
                 base_i.name()
             )));
         }
-        // candidate = solid_base(base_i);
-        // if (winner == NULL) {
-        //     winner = candidate;
-        //     base = base_i;
-        // }
-        // else if (PyType_IsSubtype(winner, candidate))
-        //     ;
-        // else if (PyType_IsSubtype(candidate, winner)) {
-        //     winner = candidate;
-        //     base = base_i;
-        // }
-        // else {
-        //     PyErr_SetString(
-        //         PyExc_TypeError,
-        //         "multiple bases have "
-        //         "instance lay-out conflict");
-        //     return NULL;
-        // }
     }
 
-    // FIXME: Ok(base.unwrap()) is expected
     Ok(bases[0].clone())
 }
 

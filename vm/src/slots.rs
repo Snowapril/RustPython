@@ -16,6 +16,8 @@ bitflags! {
     pub struct PyTypeFlags: u64 {
         const HEAPTYPE = 1 << 9;
         const BASETYPE = 1 << 10;
+        const READY = 1 << 12;
+        const READYING = 1 << 13;
         const METHOD_DESCR = 1 << 17;
         const HAS_DICT = 1 << 40;
 
