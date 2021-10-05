@@ -3624,7 +3624,6 @@ mod _io {
         PyType::new(
             ctx.types.type_type.clone(),
             "UnsupportedOperation",
-            ctx.exceptions.os_error.clone(),
             vec![
                 ctx.exceptions.os_error.clone(),
                 ctx.exceptions.value_error.clone(),

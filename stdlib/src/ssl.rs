@@ -1118,7 +1118,6 @@ pub fn make_module(vm: &VirtualMachine) -> PyObjectRef {
     let ssl_cert_verification_error = PyType::new(
         ctx.types.type_type.clone(),
         "SSLCertVerificationError",
-        ssl_error.clone(),
         vec![ssl_error.clone(), ctx.exceptions.value_error.clone()],
         Default::default(),
         PyBaseException::make_slots(),

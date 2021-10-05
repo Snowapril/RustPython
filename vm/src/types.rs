@@ -227,13 +227,6 @@ pub fn create_type_with_slots(
     slots: PyTypeSlots,
 ) -> PyTypeRef {
     let dict = PyAttributes::default();
-    PyType::new(
-        type_type.clone(),
-        name,
-        base.clone(),
-        vec![base.clone()],
-        dict,
-        slots,
-    )
-    .expect("Failed to create a new type in internal code.")
+    PyType::new(type_type.clone(), name, vec![base.clone()], dict, slots)
+        .expect("Failed to create a new type in internal code.")
 }
