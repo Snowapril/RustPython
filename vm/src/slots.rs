@@ -114,7 +114,7 @@ pub struct PyTypeSlots {
 
     // Strong reference on a heap type, borrowed reference on a static type
     // tp_base
-    // tp_dict
+    pub dict: PyRwLock<Option<PyAttributes>>,
     pub descr_get: AtomicCell<Option<DescrGetFunc>>,
     pub descr_set: AtomicCell<Option<DescrSetFunc>>,
     // tp_dictoffset
