@@ -89,15 +89,17 @@ impl SlotIterator for PyZip {
                         for (index, iterator) in zelf.iterators[1..].iter().enumerate() {
                             let item = match iterator.next(vm)? {
                                 PyIterReturn::Return(_obj) => {
-                                        let plural = if index == 1 { " " } else { "s 1-" };
-                                        return Err(vm.new_value_error(format!(
-                                            "zip() argument {} is longer than argument{}{}",
-                                            index + 1,
-                                            plural,
-                                            index
-                                        )));
-                                },
-                                PyIterReturn::StopIteration(v) => return Ok(PyIterReturn::StopIteration(v)),
+                                    let plural = if index == 1 { " " } else { "s 1-" };
+                                    return Err(vm.new_value_error(format!(
+                                        "zip() argument {} is longer than argument{}{}",
+                                        index + 1,
+                                        plural,
+                                        index
+                                    )));
+                                }
+                                PyIterReturn::StopIteration(v) => {
+                                    return Ok(PyIterReturn::StopIteration(v))
+                                }
                             };
                         }
                     }
