@@ -22,11 +22,9 @@ use std::ops::Deref;
 /// type(name, bases, dict) -> a new type
 #[pyclass(module = false, name = "type")]
 pub struct PyType {
-    pub base: Option<PyTypeRef>,
     pub bases: Vec<PyTypeRef>,
     pub mro: Vec<PyTypeRef>,
     pub subclasses: PyRwLock<Vec<PyWeak>>,
-    pub attributes: PyRwLock<PyAttributes>,
     pub slots: PyTypeSlots,
 }
 
@@ -54,9 +52,8 @@ impl PyType {
     pub fn new(
         metaclass: PyRef<Self>,
         name: &str,
-        base: PyRef<Self>,
         bases: Vec<PyRef<Self>>,
-        attrs: PyAttributes,
+        dict: PyAttributes,
         mut slots: PyTypeSlots,
     ) -> Result<PyRef<Self>, String> {
         // Check for duplicates in bases.
@@ -78,21 +75,20 @@ impl PyType {
         }
 
         *slots.name.write() = Some(String::from(name));
+        *slots.dict.write() = Some(dict);
 
         let new_type = PyRef::new_ref(
             PyType {
-                base: Some(base),
                 bases,
                 mro,
                 subclasses: PyRwLock::default(),
-                attributes: PyRwLock::new(attrs),
                 slots,
             },
             metaclass,
             None,
         );
 
-        for attr_name in new_type.attributes.read().keys() {
+        for attr_name in new_type.slots.dict.read().keys() {
             if attr_name.starts_with("__") && attr_name.ends_with("__") {
                 new_type.update_slot(attr_name, true);
             }
@@ -129,7 +125,8 @@ impl PyType {
 
     // This is used for class initialisation where the vm is not yet available.
     pub fn set_str_attr<V: Into<PyObjectRef>>(&self, attr_name: &str, value: V) {
-        self.attributes
+        self.slots
+            .dict
             .write()
             .insert(attr_name.to_owned(), value.into());
     }
@@ -143,22 +140,22 @@ impl PyType {
     }
 
     pub fn get_direct_attr(&self, attr_name: &str) -> Option<PyObjectRef> {
-        self.attributes.read().get(attr_name).cloned()
+        self.slots.dict.read().get(attr_name).cloned()
     }
 
     pub fn get_super_attr(&self, attr_name: &str) -> Option<PyObjectRef> {
         self.mro
             .iter()
-            .find_map(|class| class.attributes.read().get(attr_name).cloned())
+            .find_map(|class| class.slots.dict.read().get(attr_name).cloned())
     }
 
     // This is the internal has_attr implementation for fast lookup on a class.
     pub fn has_attr(&self, attr_name: &str) -> bool {
-        self.attributes.read().contains_key(attr_name)
+        self.slots.dict.read().contains_key(attr_name)
             || self
                 .mro
                 .iter()
-                .any(|c| c.attributes.read().contains_key(attr_name))
+                .any(|c| c.slots.dict.read().contains_key(attr_name))
     }
 
     pub fn get_attributes(&self) -> PyAttributes {
@@ -166,7 +163,7 @@ impl PyType {
         let mut attributes = PyAttributes::default();
 
         for bc in self.iter_mro().rev() {
-            for (name, value) in bc.attributes.read().iter() {
+            for (name, value) in bc.slots.dict.read().iter() {
                 attributes.insert(name.to_owned(), value.clone());
             }
         }
@@ -428,7 +425,8 @@ impl PyType {
 
     #[pyproperty(magic)]
     pub fn qualname(&self, vm: &VirtualMachine) -> PyObjectRef {
-        self.attributes
+        self.slots
+            .dict
             .read()
             .get("__qualname__")
             .cloned()
@@ -446,7 +444,8 @@ impl PyType {
     #[pyproperty(magic)]
     pub fn module(&self, vm: &VirtualMachine) -> PyObjectRef {
         // TODO: Implement getting the actual module a builtin type is from
-        self.attributes
+        self.slots
+            .dict
             .read()
             .get("__module__")
             .cloned()
@@ -748,7 +747,7 @@ impl SlotSetattro for PyType {
         }
         let assign = value.is_some();
 
-        let mut attributes = zelf.attributes.write();
+        let mut attributes = zelf.slots.dict.write();
         if let Some(value) = value {
             attributes.insert(attr_name.as_str().to_owned(), value);
         } else {
@@ -1043,7 +1042,6 @@ mod tests {
         let a = PyType::new(
             type_type.clone(),
             "A",
-            object.clone(),
             vec![object.clone()],
             PyAttributes::default(),
             Default::default(),
@@ -1052,7 +1050,6 @@ mod tests {
         let b = PyType::new(
             type_type.clone(),
             "B",
-            object.clone(),
             vec![object.clone()],
             PyAttributes::default(),
             Default::default(),
