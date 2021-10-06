@@ -1,15 +1,19 @@
 use super::PyTypeRef;
 use crate::{
-    function::PosArgs,
+    builtins::IntoPyBool,
+    function::{OptionalArg, PosArgs},
     protocol::{PyIter, PyIterReturn},
     slots::{IteratorIterable, SlotConstructor, SlotIterator},
-    PyClassImpl, PyContext, PyRef, PyResult, PyValue, VirtualMachine,
+    IntoPyObject, PyClassImpl, PyContext, PyObjectRef, PyRef, PyResult, PyValue, TryFromObject,
+    TypeProtocol, VirtualMachine,
 };
+use crossbeam_utils::atomic::AtomicCell;
 
 #[pyclass(module = false, name = "zip")]
 #[derive(Debug)]
 pub struct PyZip {
     iterators: Vec<PyIter>,
+    strict: AtomicCell<bool>,
 }
 
 impl PyValue for PyZip {
@@ -18,17 +22,48 @@ impl PyValue for PyZip {
     }
 }
 
-impl SlotConstructor for PyZip {
-    type Args = PosArgs<PyIter>;
+#[derive(FromArgs)]
+pub struct PyZipNewArgs {
+    #[pyarg(named, optional)]
+    strict: OptionalArg<bool>,
+}
 
-    fn py_new(cls: PyTypeRef, iterators: Self::Args, vm: &VirtualMachine) -> PyResult {
+impl SlotConstructor for PyZip {
+    type Args = (PosArgs<PyIter>, PyZipNewArgs);
+
+    fn py_new(cls: PyTypeRef, (iterators, args): Self::Args, vm: &VirtualMachine) -> PyResult {
         let iterators = iterators.into_vec();
-        PyZip { iterators }.into_pyresult_with_type(vm, cls)
+        let strict = AtomicCell::new(args.strict.unwrap_or(false));
+        PyZip { iterators, strict }.into_pyresult_with_type(vm, cls)
     }
 }
 
 #[pyimpl(with(SlotIterator, SlotConstructor), flags(BASETYPE))]
-impl PyZip {}
+impl PyZip {
+    #[pymethod(magic)]
+    fn reduce(zelf: PyRef<Self>, vm: &VirtualMachine) -> PyResult {
+        let cls = zelf.clone_class().into_pyobject(vm);
+        let iterators = zelf
+            .iterators
+            .iter()
+            .map(|obj| obj.clone().into_object())
+            .collect::<Vec<_>>();
+        let tupleit = vm.ctx.new_tuple(iterators);
+        Ok(if zelf.strict.load() {
+            vm.ctx.new_tuple(vec![cls, tupleit, vm.ctx.new_bool(true)])
+        } else {
+            vm.ctx.new_tuple(vec![cls, tupleit])
+        })
+    }
+
+    #[pymethod(magic)]
+    fn setstate(zelf: PyRef<Self>, state: PyObjectRef, vm: &VirtualMachine) -> PyResult<()> {
+        if let Ok(obj) = IntoPyBool::try_from_object(vm, state) {
+            zelf.strict.store(obj.to_bool());
+        }
+        Ok(())
+    }
+}
 
 impl IteratorIterable for PyZip {}
 impl SlotIterator for PyZip {
@@ -37,10 +72,37 @@ impl SlotIterator for PyZip {
             return Ok(PyIterReturn::StopIteration(None));
         }
         let mut next_objs = Vec::new();
-        for iterator in zelf.iterators.iter() {
+        for (index, iterator) in zelf.iterators.iter().enumerate() {
             let item = match iterator.next(vm)? {
                 PyIterReturn::Return(obj) => obj,
-                PyIterReturn::StopIteration(v) => return Ok(PyIterReturn::StopIteration(v)),
+                PyIterReturn::StopIteration(v) => {
+                    if zelf.strict.load() {
+                        if index > 0 {
+                            let plural = if index == 1 { " " } else { "s 1-" };
+                            return Err(vm.new_value_error(format!(
+                                "zip() argument {} is shorter than argument{}{}",
+                                index + 1,
+                                plural,
+                                index
+                            )));
+                        }
+                        for (index, iterator) in zelf.iterators[1..].iter().enumerate() {
+                            let item = match iterator.next(vm)? {
+                                PyIterReturn::Return(_obj) => {
+                                        let plural = if index == 1 { " " } else { "s 1-" };
+                                        return Err(vm.new_value_error(format!(
+                                            "zip() argument {} is longer than argument{}{}",
+                                            index + 1,
+                                            plural,
+                                            index
+                                        )));
+                                },
+                                PyIterReturn::StopIteration(v) => return Ok(PyIterReturn::StopIteration(v)),
+                            };
+                        }
+                    }
+                    return Ok(PyIterReturn::StopIteration(v));
+                }
             };
             next_objs.push(item);
         }
