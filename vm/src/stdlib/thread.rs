@@ -328,7 +328,7 @@ pub(crate) mod _thread {
     }
 
     impl GetAttr for Local {
-        fn getattro(zelf: PyRef<Self>, attr: PyStrRef, vm: &VirtualMachine) -> PyResult {
+        fn getattro(zelf: &PyRef<Self>, attr: PyStrRef, vm: &VirtualMachine) -> PyResult {
             let ldict = zelf.ldict(vm);
             if attr.as_str() == "__dict__" {
                 Ok(ldict.into())

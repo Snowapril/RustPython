@@ -559,7 +559,7 @@ pub(crate) fn get_text_signature_from_internal_doc<'a>(
 }
 
 impl GetAttr for PyType {
-    fn getattro(zelf: PyRef<Self>, name_str: PyStrRef, vm: &VirtualMachine) -> PyResult {
+    fn getattro(zelf: &PyRef<Self>, name_str: PyStrRef, vm: &VirtualMachine) -> PyResult {
         let name = name_str.as_str();
         vm_trace!("type.__getattribute__({:?}, {:?})", zelf, name);
         let mcl = zelf.class();
@@ -574,7 +574,8 @@ impl GetAttr for PyType {
             {
                 if let Some(descr_get) = attr_class.mro_find_map(|cls| cls.slots.descr_get.load()) {
                     let mcl = PyLease::into_pyref(mcl).into();
-                    return descr_get(attr.clone(), Some(zelf.into()), Some(mcl), vm);
+                    return descr_get(attr.clone(), Some(zelf.as_object().clone()), Some(mcl), vm);
+                    // TODO(snowapril)
                 }
             }
         }
@@ -584,7 +585,8 @@ impl GetAttr for PyType {
         if let Some(ref attr) = zelf_attr {
             if let Some(descr_get) = attr.class().mro_find_map(|cls| cls.slots.descr_get.load()) {
                 drop(mcl);
-                return descr_get(attr.clone(), None, Some(zelf.into()), vm);
+                return descr_get(attr.clone(), None, Some(zelf.as_object().clone()), vm);
+                // TODO(snowapril)
             }
         }
 

@@ -1527,15 +1527,15 @@ impl VirtualMachine {
         })
     }
 
-    pub fn generic_getattribute(&self, obj: PyObjectRef, name: PyStrRef) -> PyResult {
-        self.generic_getattribute_opt(obj.clone(), name.clone(), None)?
+    pub fn generic_getattribute(&self, obj: &PyObjectRef, name: PyStrRef) -> PyResult {
+        self.generic_getattribute_opt(obj, name.clone(), None)?
             .ok_or_else(|| self.new_attribute_error(format!("{} has no attribute '{}'", obj, name)))
     }
 
     /// CPython _PyObject_GenericGetAttrWithDict
     pub fn generic_getattribute_opt(
         &self,
-        obj: PyObjectRef,
+        obj: &PyObjectRef,
         name_str: PyStrRef,
         dict: Option<PyDictRef>,
     ) -> PyResult<Option<PyObjectRef>> {
@@ -1552,7 +1552,7 @@ impl VirtualMachine {
                     {
                         drop(descr_cls);
                         let cls = PyLease::into_pyref(obj_cls).into();
-                        return descr_get(descr, Some(obj), Some(cls), self).map(Some);
+                        return descr_get(descr, Some(obj.clone()), Some(cls), self).map(Some);
                     }
                 }
                 drop(descr_cls);

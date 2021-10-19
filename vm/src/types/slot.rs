@@ -131,7 +131,7 @@ pub(crate) type GenericMethod = fn(&PyObjectRef, FuncArgs, &VirtualMachine) -> P
 pub(crate) type AsMappingFunc = fn(&PyObjectRef, &VirtualMachine) -> PyMappingMethods;
 pub(crate) type HashFunc = fn(&PyObjectRef, &VirtualMachine) -> PyResult<PyHash>;
 // CallFunc = GenericMethod
-pub(crate) type GetattroFunc = fn(PyObjectRef, PyStrRef, &VirtualMachine) -> PyResult;
+pub(crate) type GetattroFunc = fn(&PyObjectRef, PyStrRef, &VirtualMachine) -> PyResult;
 pub(crate) type SetattroFunc =
     fn(&PyObjectRef, PyStrRef, Option<PyObjectRef>, &VirtualMachine) -> PyResult<()>;
 pub(crate) type AsBufferFunc = fn(&PyObjectRef, &VirtualMachine) -> PyResult<PyBuffer>;
@@ -204,7 +204,7 @@ fn call_wrapper(zelf: &PyObjectRef, args: FuncArgs, vm: &VirtualMachine) -> PyRe
     vm.call_special_method(zelf.clone(), "__call__", args)
 }
 
-fn getattro_wrapper(zelf: PyObjectRef, name: PyStrRef, vm: &VirtualMachine) -> PyResult {
+fn getattro_wrapper(zelf: &PyObjectRef, name: PyStrRef, vm: &VirtualMachine) -> PyResult {
     vm.call_special_method(zelf, "__getattribute__", (name,))
 }
 
@@ -689,21 +689,21 @@ impl PyComparisonOp {
 #[pyimpl]
 pub trait GetAttr: PyValue {
     #[pyslot]
-    fn slot_getattro(obj: PyObjectRef, name: PyStrRef, vm: &VirtualMachine) -> PyResult {
+    fn slot_getattro(obj: &PyObjectRef, name: PyStrRef, vm: &VirtualMachine) -> PyResult {
         if let Ok(zelf) = obj.downcast::<Self>() {
+            // TODO(snowapril)
             Self::getattro(zelf, name, vm)
         } else {
             Err(vm.new_type_error("unexpected payload for __getattribute__".to_owned()))
         }
     }
 
-    // TODO: make zelf: &PyRef<Self>
-    fn getattro(zelf: PyRef<Self>, name: PyStrRef, vm: &VirtualMachine) -> PyResult;
+    fn getattro(zelf: &PyRef<Self>, name: PyStrRef, vm: &VirtualMachine) -> PyResult;
 
     #[inline]
     #[pymethod(magic)]
     fn getattribute(zelf: PyRef<Self>, name: PyStrRef, vm: &VirtualMachine) -> PyResult {
-        Self::getattro(zelf, name, vm)
+        Self::getattro(&zelf, name, vm)
     }
 }
 

@@ -172,7 +172,7 @@ impl Hashable for PyGenericAlias {
 }
 
 impl GetAttr for PyGenericAlias {
-    fn getattro(zelf: PyRef<Self>, attr: PyStrRef, vm: &VirtualMachine) -> PyResult {
+    fn getattro(zelf: &PyRef<Self>, attr: PyStrRef, vm: &VirtualMachine) -> PyResult {
         for exc in ATTR_EXCEPTIONS.iter() {
             if *(*exc) == attr.to_string() {
                 return vm.generic_getattribute(zelf.as_object().clone(), attr);

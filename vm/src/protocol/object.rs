@@ -25,7 +25,7 @@ impl PyObjectRef {
 
     // get_attribute should be used for full attribute access (usually from user code).
     #[cfg_attr(feature = "flame-it", flame("PyObjectRef"))]
-    pub fn get_attr(self, attr_name: impl IntoPyStrRef, vm: &VirtualMachine) -> PyResult {
+    pub fn get_attr(&self, attr_name: impl IntoPyStrRef, vm: &VirtualMachine) -> PyResult {
         let attr_name = attr_name.into_pystr_ref(vm);
         vm_trace!("object.__getattribute__: {:?} {:?}", obj, attr_name);
         let getattro = self

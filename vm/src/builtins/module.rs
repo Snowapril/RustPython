@@ -95,9 +95,10 @@ impl PyModule {
 }
 
 impl GetAttr for PyModule {
-    fn getattro(zelf: PyRef<Self>, name: PyStrRef, vm: &VirtualMachine) -> PyResult {
+    fn getattro(zelf: &PyRef<Self>, name: PyStrRef, vm: &VirtualMachine) -> PyResult {
         if let Some(attr) =
             vm.generic_getattribute_opt(zelf.as_object().clone(), name.clone(), None)?
+        // TODO(snowapril)
         {
             return Ok(attr);
         }
