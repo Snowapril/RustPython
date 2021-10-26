@@ -28,6 +28,8 @@ pub struct PyTypeSlots {
     // More standard operations (here for binary compatibility)
     pub hash: AtomicCell<Option<HashFunc>>,
     pub call: AtomicCell<Option<GenericMethod>>,
+    pub vector_call: Option<VectorCallFunc>,
+
     // tp_str
     pub getattro: AtomicCell<Option<GetattroFunc>>,
     pub setattro: AtomicCell<Option<SetattroFunc>>,
@@ -149,6 +151,7 @@ pub(crate) type DescrSetFunc =
     fn(PyObjectRef, PyObjectRef, Option<PyObjectRef>, &VirtualMachine) -> PyResult<()>;
 pub(crate) type NewFunc = fn(PyTypeRef, FuncArgs, &VirtualMachine) -> PyResult;
 pub(crate) type DelFunc = fn(&PyObject, &VirtualMachine) -> PyResult<()>;
+pub(crate) type VectorCallFunc = fn(&PyObject, FuncArgs, &VirtualMachine) -> PyResult;
 
 fn as_mapping_wrapper(zelf: &PyObject, _vm: &VirtualMachine) -> PyMappingMethods {
     macro_rules! then_some_closure {
@@ -400,6 +403,23 @@ pub trait Callable: PyValue {
         Self::slot_call(&zelf, args.bind(vm)?, vm)
     }
     fn call(zelf: &PyObjectView<Self>, args: Self::Args, vm: &VirtualMachine) -> PyResult;
+}
+
+#[pyimpl]
+pub trait VectorCallable: PyValue {
+    type Args: FromArgs;
+
+    #[inline]
+    #[pyslot]
+    fn slot_vector_call(zelf: &PyObjectRef, args: FuncArgs, vm: &VirtualMachine) -> PyResult {
+        if let Some(zelf) = zelf.downcast_ref() {
+            Self::vector_call(zelf, args.bind(vm)?, vm)
+        } else {
+            Err(vm.new_type_error("unexpected payload for vector_call".to_owned()))
+        }
+    }
+
+    fn vector_call(zelf: &PyRef<Self>, args: Self::Args, vm: &VirtualMachine) -> PyResult;
 }
 
 #[pyimpl]
