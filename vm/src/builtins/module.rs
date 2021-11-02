@@ -4,10 +4,13 @@ use crate::{
     types::GetAttr,
     ItemProtocol, PyClassImpl, PyContext, PyObjectRef, PyRef, PyResult, PyValue, VirtualMachine,
 };
+use std::cell::RefCell;
 
 #[pyclass(module = false, name = "module")]
 #[derive(Debug)]
-pub struct PyModule;
+pub struct PyModule {
+    module_def: RefCell<PyModuleDef>, // TODO: refcell? oncecell? rwlock?
+}
 
 impl PyValue for PyModule {
     fn class(vm: &VirtualMachine) -> &PyTypeRef {
@@ -117,6 +120,46 @@ impl GetAttr for PyModule {
     }
 }
 
+#[pyclass(module = false, name = "moduledef")]
+#[derive(Debug)]
+pub struct PyModuleDef;
+
+impl PyValue for PyModuleDef {
+    fn class(vm: &VirtualMachine) -> &PyTypeRef {
+        &vm.ctx.types.module_def_type
+    }
+}
+
+#[derive(FromArgs)]
+struct ModuleInitArgs {
+    name: PyStrRef,
+    #[pyarg(any, default)]
+    doc: Option<PyStrRef>,
+}
+
+#[pyimpl(flags(BASETYPE, HAS_DICT))]
+impl PyModuleDef {
+    #[pyslot]
+    fn slot_new(cls: PyTypeRef, _args: FuncArgs, vm: &VirtualMachine) -> PyResult {
+        PyModule {}.into_pyresult_with_type(vm, cls)
+    }
+
+    #[pymethod(magic)]
+    fn init(zelf: PyRef<Self>, args: ModuleInitArgs, vm: &VirtualMachine) {
+        debug_assert!(crate::TypeProtocol::class(zelf.as_object())
+            .slots
+            .flags
+            .has_feature(crate::types::PyTypeFlags::HAS_DICT));
+        init_module_dict(
+            vm,
+            &zelf.as_object().dict().unwrap(),
+            args.name.into(),
+            args.doc.into_pyobject(vm),
+        );
+    }
+}
+
 pub(crate) fn init(context: &PyContext) {
     PyModule::extend_class(context, &context.types.module_type);
+    PyModule::extend_class(context, &context.types.module_def_type);
 }
