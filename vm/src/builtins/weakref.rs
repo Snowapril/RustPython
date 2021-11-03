@@ -14,6 +14,7 @@ use crossbeam_utils::atomic::AtomicCell;
 pub struct PyWeak {
     referent: PyObjectWeak,
     hash: AtomicCell<Option<PyHash>>,
+    callback: PyObjectRef,
 }
 
 impl PyWeak {
@@ -34,7 +35,7 @@ pub struct WeakNewArgs {
     #[pyarg(positional)]
     referent: PyObjectRef,
     #[pyarg(positional, optional)]
-    _callback: OptionalArg<PyObjectRef>,
+    callback: OptionalArg<PyObjectRef>,
 }
 
 impl PyValue for PyWeak {
@@ -57,10 +58,7 @@ impl Constructor for PyWeak {
     // TODO callbacks
     fn py_new(
         cls: PyTypeRef,
-        Self::Args {
-            referent,
-            _callback,
-        }: Self::Args,
+        Self::Args { referent, callback }: Self::Args,
         vm: &VirtualMachine,
     ) -> PyResult {
         PyWeak::downgrade(&referent).into_pyresult_with_type(vm, cls)
