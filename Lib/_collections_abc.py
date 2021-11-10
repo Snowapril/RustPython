@@ -73,7 +73,7 @@ async_generator = type(_ag)
 del _ag
 
 
-# ## ONE-TRICK PONIES ###
+### ONE-TRICK PONIES ###
 
 def _check_methods(C, *methods):
     mro = C.__mro__
@@ -286,9 +286,10 @@ class Iterator(Iterable):
             return _check_methods(C, '__iter__', '__next__')
         return NotImplemented
 
+
 Iterator.register(bytes_iterator)
 Iterator.register(bytearray_iterator)
-# Iterator.register(callable_iterator)
+#Iterator.register(callable_iterator)
 Iterator.register(dict_keyiterator)
 Iterator.register(dict_valueiterator)
 Iterator.register(dict_itemiterator)
@@ -365,7 +366,9 @@ class Generator(Iterator):
                                   'send', 'throw', 'close')
         return NotImplemented
 
+
 Generator.register(generator)
+
 
 class Sized(metaclass=ABCMeta):
 
@@ -397,6 +400,7 @@ class Container(metaclass=ABCMeta):
         return NotImplemented
 
     __class_getitem__ = classmethod(GenericAlias)
+
 
 class Collection(Sized, Iterable, Container):
 
@@ -564,7 +568,6 @@ class Callable(metaclass=ABCMeta):
 
 
 class Set(Collection):
-
     """A set is a finite, iterable container.
 
     This class provides concrete generic implementations of all
@@ -692,6 +695,7 @@ class Set(Collection):
             hx = hash(x)
             h ^= (hx ^ (hx << 16) ^ 89869747)  * 3644798167
             h &= MASK
+        h ^= (h >> 11) ^ (h >> 25)
         h = h * 69069 + 907133923
         h &= MASK
         if h > MAX:
@@ -699,6 +703,7 @@ class Set(Collection):
         if h == -1:
             h = 590923713
         return h
+
 
 Set.register(frozenset)
 
@@ -782,23 +787,24 @@ class MutableSet(Set):
                 self.discard(value)
         return self
 
+
 MutableSet.register(set)
 
 
 ### MAPPINGS ###
 
-
 class Mapping(Collection):
-
-    __slots__ = ()
-
     """A Mapping is a generic container for associating key/value
     pairs.
 
     This class provides concrete generic implementations of all
     methods except for __getitem__, __iter__, and __len__.
-
     """
+
+    __slots__ = ()
+
+    # Tell ABCMeta.__new__ that this class should have TPFLAGS_MAPPING set.
+    __abc_tpflags__ = 1 << 6 # Py_TPFLAGS_MAPPING
 
     @abstractmethod
     def __getitem__(self, key):
@@ -871,6 +877,7 @@ class KeysView(MappingView, Set):
     def __iter__(self):
         yield from self._mapping
 
+
 KeysView.register(dict_keys)
 
 
@@ -895,6 +902,7 @@ class ItemsView(MappingView, Set):
         for key in self._mapping:
             yield (key, self._mapping[key])
 
+
 ItemsView.register(dict_items)
 
 
@@ -913,21 +921,20 @@ class ValuesView(MappingView, Collection):
         for key in self._mapping:
             yield self._mapping[key]
 
+
 ValuesView.register(dict_values)
 
 
 class MutableMapping(Mapping):
-
-    __slots__ = ()
-
     """A MutableMapping is a generic container for associating
     key/value pairs.
 
     This class provides concrete generic implementations of all
     methods except for __getitem__, __setitem__, __delitem__,
     __iter__, and __len__.
-
     """
+
+    __slots__ = ()
 
     @abstractmethod
     def __setitem__(self, key, value):
@@ -973,34 +980,21 @@ class MutableMapping(Mapping):
         except KeyError:
             pass
 
-    def update(*args, **kwds):
+    def update(self, other=(), /, **kwds):
         ''' D.update([E, ]**F) -> None.  Update D from mapping/iterable E and F.
             If E present and has a .keys() method, does:     for k in E: D[k] = E[k]
             If E present and lacks .keys() method, does:     for (k, v) in E: D[k] = v
             In either case, this is followed by: for k, v in F.items(): D[k] = v
         '''
-        if not args:
-            raise TypeError("descriptor 'update' of 'MutableMapping' object "
-                            "needs an argument")
-        self, *args = args
-        if len(args) > 1:
-            raise TypeError('update expected at most 1 arguments, got %d' %
-                            len(args))
-        if args:
-            other = args[0]
-            try:
-                mapping_inst = isinstance(other, Mapping)
-            except TypeError:
-                mapping_inst = False
-            if mapping_inst:
-                for key in other:
-                    self[key] = other[key]
-            elif hasattr(other, "keys"):
-                for key in other.keys():
-                    self[key] = other[key]
-            else:
-                for key, value in other:
-                    self[key] = value
+        if isinstance(other, Mapping):
+            for key in other:
+                self[key] = other[key]
+        elif hasattr(other, "keys"):
+            for key in other.keys():
+                self[key] = other[key]
+        else:
+            for key, value in other:
+                self[key] = value
         for key, value in kwds.items():
             self[key] = value
 
@@ -1012,14 +1006,13 @@ class MutableMapping(Mapping):
             self[key] = default
         return default
 
+
 MutableMapping.register(dict)
 
 
 ### SEQUENCES ###
 
-
 class Sequence(Reversible, Collection):
-
     """All the operations on a read-only sequence.
 
     Concrete subclasses must override __new__ or __init__,
@@ -1027,6 +1020,9 @@ class Sequence(Reversible, Collection):
     """
 
     __slots__ = ()
+
+    # Tell ABCMeta.__new__ that this class should have TPFLAGS_SEQUENCE set.
+    __abc_tpflags__ = 1 << 5 # Py_TPFLAGS_SEQUENCE
 
     @abstractmethod
     def __getitem__(self, index):
@@ -1086,7 +1082,6 @@ Sequence.register(memoryview)
 
 
 class ByteString(Sequence):
-
     """This unifies bytes and bytearray.
 
     XXX Should add all their methods.
@@ -1099,15 +1094,13 @@ ByteString.register(bytearray)
 
 
 class MutableSequence(Sequence):
-
-    __slots__ = ()
-
     """All the operations on a read-write sequence.
 
     Concrete subclasses must provide __new__ or __init__,
     __getitem__, __setitem__, __delitem__, __len__, and insert().
-
     """
+
+    __slots__ = ()
 
     @abstractmethod
     def __setitem__(self, index, value):
@@ -1164,6 +1157,7 @@ class MutableSequence(Sequence):
     def __iadd__(self, values):
         self.extend(values)
         return self
+
 
 MutableSequence.register(list)
 MutableSequence.register(bytearray)  # Multiply inheriting, see ByteString
