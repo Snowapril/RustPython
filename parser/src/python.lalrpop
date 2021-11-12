@@ -446,7 +446,7 @@ ExceptClause: ast::Excepthandler = {
 };
 
 WithStatement: ast::Stmt = {
-    <location:@L> <is_async:"async"?> "with" <items:OneOrMore<WithItem>> ":" <body:Suite> => {
+    <location:@L> <is_async:"async"?> "with" <items:ParenthesizedContext> ":" <body:Suite> => {
         let type_comment = None;
         let node = if is_async.is_some() {
             ast::StmtKind::AsyncWith { items, body, type_comment }
@@ -457,8 +457,13 @@ WithStatement: ast::Stmt = {
     },
 };
 
+ParenthesizedContext: Vec<ast::Withitem> = {
+    <items:OneOrMore<WithItem>> => items,
+    "(" <items:OneOrMore<WithItem>> ","? ")" => items,
+};
+
 WithItem: ast::Withitem = {
-    <context_expr:Test> <n:("as" Expression)?> => {
+    <context_expr:Test> <n:("as" ExpressionOrStarExpression)?> => {
         let optional_vars = n.map(|val| Box::new(val.1));
         let context_expr = Box::new(context_expr);
         ast::Withitem { context_expr, optional_vars }
