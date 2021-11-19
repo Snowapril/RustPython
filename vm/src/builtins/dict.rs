@@ -132,7 +132,7 @@ impl PyDict {
     }
 
     #[pyclassmethod]
-    fn fromkeys(
+    pub fn fromkeys(
         class: PyTypeRef,
         iterable: ArgIterable,
         value: OptionalArg<PyObjectRef>,

@@ -1,7 +1,7 @@
 use crate::builtins::{
     asyncgenerator, builtinfunc, bytearray, bytes, classmethod, code, complex, coroutine, dict,
     enumerate, filter, float, frame, function, generator, genericalias, getset, int, iter, list,
-    map, mappingproxy, memory, module, namespace, object, property, pybool, pystr, pysuper,
+    map, mappingproxy, memory, module, namespace, object, odict, property, pybool, pystr, pysuper,
     pytype::{self, PyTypeRef},
     range, set, singletons, slice, staticmethod, traceback, tuple, weakproxy, weakref, zip,
 };
@@ -26,6 +26,25 @@ pub struct TypeZoo {
     pub coroutine_type: PyTypeRef,
     pub coroutine_wrapper_type: PyTypeRef,
     pub dict_type: PyTypeRef,
+    pub dict_keyiterator_type: PyTypeRef,
+    pub dict_reversekeyiterator_type: PyTypeRef,
+    pub dict_valueiterator_type: PyTypeRef,
+    pub dict_reversevalueiterator_type: PyTypeRef,
+    pub dict_itemiterator_type: PyTypeRef,
+    pub dict_reverseitemiterator_type: PyTypeRef,
+    pub dict_keys_type: PyTypeRef,
+    pub dict_values_type: PyTypeRef,
+    pub dict_items_type: PyTypeRef,
+    pub odict_type: PyTypeRef,
+    pub odict_keyiterator_type: PyTypeRef,
+    pub odict_reversekeyiterator_type: PyTypeRef,
+    pub odict_valueiterator_type: PyTypeRef,
+    pub odict_reversevalueiterator_type: PyTypeRef,
+    pub odict_itemiterator_type: PyTypeRef,
+    pub odict_reverseitemiterator_type: PyTypeRef,
+    pub odict_keys_type: PyTypeRef,
+    pub odict_values_type: PyTypeRef,
+    pub odict_items_type: PyTypeRef,
     pub enumerate_type: PyTypeRef,
     pub filter_type: PyTypeRef,
     pub float_type: PyTypeRef,
@@ -40,15 +59,6 @@ pub struct TypeZoo {
     pub list_iterator_type: PyTypeRef,
     pub list_reverseiterator_type: PyTypeRef,
     pub str_iterator_type: PyTypeRef,
-    pub dict_keyiterator_type: PyTypeRef,
-    pub dict_reversekeyiterator_type: PyTypeRef,
-    pub dict_valueiterator_type: PyTypeRef,
-    pub dict_reversevalueiterator_type: PyTypeRef,
-    pub dict_itemiterator_type: PyTypeRef,
-    pub dict_reverseitemiterator_type: PyTypeRef,
-    pub dict_keys_type: PyTypeRef,
-    pub dict_values_type: PyTypeRef,
-    pub dict_items_type: PyTypeRef,
     pub map_type: PyTypeRef,
     pub memoryview_type: PyTypeRef,
     pub tuple_type: PyTypeRef,
@@ -99,6 +109,30 @@ impl TypeZoo {
             classmethod_type: classmethod::PyClassMethod::init_bare_type().clone(),
             complex_type: complex::PyComplex::init_bare_type().clone(),
             dict_type: dict::PyDict::init_bare_type().clone(),
+            dict_keys_type: dict::PyDictKeys::init_bare_type().clone(),
+            dict_values_type: dict::PyDictValues::init_bare_type().clone(),
+            dict_items_type: dict::PyDictItems::init_bare_type().clone(),
+            dict_keyiterator_type: dict::PyDictKeyIterator::init_bare_type().clone(),
+            dict_reversekeyiterator_type: dict::PyDictReverseKeyIterator::init_bare_type().clone(),
+            dict_valueiterator_type: dict::PyDictValueIterator::init_bare_type().clone(),
+            dict_reversevalueiterator_type: dict::PyDictReverseValueIterator::init_bare_type()
+                .clone(),
+            dict_itemiterator_type: dict::PyDictItemIterator::init_bare_type().clone(),
+            dict_reverseitemiterator_type: dict::PyDictReverseItemIterator::init_bare_type()
+                .clone(),
+            odict_type: odict::PyOrderedDict::init_bare_type().clone(),
+            odict_keys_type: odict::PyOrderedDictKeys::init_bare_type().clone(),
+            odict_values_type: odict::PyOrderedDictValues::init_bare_type().clone(),
+            odict_items_type: odict::PyOrderedDictItems::init_bare_type().clone(),
+            odict_keyiterator_type: odict::PyOrderedDictKeyIterator::init_bare_type().clone(),
+            odict_reversekeyiterator_type: odict::PyOrderedDictReverseKeyIterator::init_bare_type()
+                .clone(),
+            odict_valueiterator_type: odict::PyOrderedDictValueIterator::init_bare_type().clone(),
+            odict_reversevalueiterator_type:
+                odict::PyOrderedDictReverseValueIterator::init_bare_type().clone(),
+            odict_itemiterator_type: odict::PyOrderedDictItemIterator::init_bare_type().clone(),
+            odict_reverseitemiterator_type:
+                odict::PyOrderedDictReverseItemIterator::init_bare_type().clone(),
             enumerate_type: enumerate::PyEnumerate::init_bare_type().clone(),
             float_type: float::PyFloat::init_bare_type().clone(),
             frozenset_type: set::PyFrozenSet::init_bare_type().clone(),
@@ -132,17 +166,6 @@ impl TypeZoo {
             code_type: code::PyCode::init_bare_type().clone(),
             coroutine_type: coroutine::PyCoroutine::init_bare_type().clone(),
             coroutine_wrapper_type: coroutine::PyCoroutineWrapper::init_bare_type().clone(),
-            dict_keys_type: dict::PyDictKeys::init_bare_type().clone(),
-            dict_values_type: dict::PyDictValues::init_bare_type().clone(),
-            dict_items_type: dict::PyDictItems::init_bare_type().clone(),
-            dict_keyiterator_type: dict::PyDictKeyIterator::init_bare_type().clone(),
-            dict_reversekeyiterator_type: dict::PyDictReverseKeyIterator::init_bare_type().clone(),
-            dict_valueiterator_type: dict::PyDictValueIterator::init_bare_type().clone(),
-            dict_reversevalueiterator_type: dict::PyDictReverseValueIterator::init_bare_type()
-                .clone(),
-            dict_itemiterator_type: dict::PyDictItemIterator::init_bare_type().clone(),
-            dict_reverseitemiterator_type: dict::PyDictReverseItemIterator::init_bare_type()
-                .clone(),
             ellipsis_type: slice::PyEllipsis::init_bare_type().clone(),
             frame_type: crate::frame::Frame::init_bare_type().clone(),
             function_type: function::PyFunction::init_bare_type().clone(),
@@ -178,6 +201,7 @@ impl TypeZoo {
         set::init(context);
         tuple::init(context);
         dict::init(context);
+        odict::init(context);
         builtinfunc::init(context);
         function::init(context);
         staticmethod::init(context);

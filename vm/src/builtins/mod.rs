@@ -19,6 +19,8 @@ pub(crate) mod coroutine;
 pub use coroutine::PyCoroutine;
 pub(crate) mod dict;
 pub use dict::{PyDict, PyDictRef};
+pub(crate) mod odict;
+pub use odict::{PyOrderedDict, PyOrderedDictRef};
 pub(crate) mod enumerate;
 pub use enumerate::PyEnumerate;
 pub(crate) mod filter;
