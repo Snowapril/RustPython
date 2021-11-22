@@ -50,7 +50,7 @@ impl FrameRef {
     }
 
     #[pyproperty]
-    fn f_code(self) -> PyRef<PyCode> {
+    pub fn f_code(self) -> PyRef<PyCode> {
         self.code.clone()
     }
 

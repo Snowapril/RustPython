@@ -225,7 +225,7 @@ impl PyRef<PyCode> {
     }
 
     #[pyproperty]
-    fn co_filename(self) -> PyStrRef {
+    pub fn co_filename(self) -> PyStrRef {
         self.code.source_path.clone()
     }
 
