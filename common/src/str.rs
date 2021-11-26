@@ -243,27 +243,25 @@ impl ReprInfo {
             let incr = match ch {
                 '\'' => {
                     squote += 1;
-                    1
+                    0
                 }
                 '"' => {
                     dquote += 1;
-                    1
+                    0
                 }
                 '\\' | '\t' | '\r' | '\n' => 2,
                 ch if ch < ' ' || ch as u32 == 0x7f => 4, // \xHH
-                ch if ch.is_ascii() => 1,
+                ch if ch.is_ascii() => 0,
                 ch if crate::char::is_printable(ch) => {
                     // max = std::cmp::max(ch, max);
-                    ch.len_utf8()
+                    0
                 }
                 ch if (ch as u32) < 0x100 => 4,   // \xHH
                 ch if (ch as u32) < 0x10000 => 6, // \uHHHH
                 _ => 10,                          // \uHHHHHHHH
             };
-            out_len += incr;
-            if out_len > std::isize::MAX as usize {
-                return Err(ReprOverflowError);
-            }
+
+            out_len = out_len.checked_add(incr).ok_or(ReprOverflowError)?;
         }
 
         let (quote, num_escaped_quotes) = choose_quotes_for_repr(squote, dquote);

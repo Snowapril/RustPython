@@ -368,8 +368,6 @@ class BuiltinTest(unittest.TestCase):
         delattr(sys, 'spam')
         self.assertRaises(TypeError, delattr)
 
-    # TODO: RUSTPYTHON
-    @unittest.expectedFailure
     def test_dir(self):
         # dir(wrong number of arguments)
         self.assertRaises(TypeError, dir, 42, 42)

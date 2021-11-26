@@ -1,9 +1,9 @@
-use super::{PyDict, PyDictRef, PyList, PyStr, PyStrRef, PyType, PyTypeRef};
+use super::{PyDict, PyDictRef, PyList, PyStr, PyStrRef, PyTupleRef, PyType, PyTypeRef};
 use crate::common::hash::PyHash;
 use crate::{
-    function::FuncArgs, types::PyComparisonOp, utils::Either, IdProtocol, ItemProtocol,
-    PyArithmeticValue, PyAttributes, PyClassImpl, PyComparisonValue, PyContext, PyObject,
-    PyObjectRef, PyResult, PyValue, TypeProtocol, VirtualMachine,
+    function::FuncArgs, pyobject::TryFromObject, types::PyComparisonOp, utils::Either, IdProtocol,
+    ItemProtocol, PyArithmeticValue, PyAttributes, PyClassImpl, PyComparisonValue, PyContext,
+    PyObject, PyObjectRef, PyResult, PyValue, TypeProtocol, VirtualMachine,
 };
 
 /// object()
@@ -222,18 +222,46 @@ impl PyBaseObject {
 
     #[pymethod(magic)]
     pub fn dir(obj: PyObjectRef, vm: &VirtualMachine) -> PyResult<PyList> {
-        let attributes: PyAttributes = obj.class().get_attributes();
+        // try to get __dict__ attribute from given obj, otherwise create new one
+        let dict = match obj.clone().get_attr("__dict__", vm) {
+            Ok(dict) => {
+                if let Ok(dict) = PyDictRef::try_from_object(vm, dict) {
+                    dict
+                } else {
+                    PyDict::from_attributes(PyAttributes::default(), vm)?.into_ref(vm)
+                }
+            }
+            Err(_) => PyDict::from_attributes(PyAttributes::default(), vm)?.into_ref(vm),
+        };
 
-        let dict = PyDict::from_attributes(attributes, vm)?.into_ref(vm);
+        // try to get __class__ attributes from given obj, otherwise propagate error
+        let its_class = obj.get_attr("__class__", vm)?;
 
-        // Get instance attributes:
-        if let Some(object_dict) = obj.dict() {
-            vm.call_method(dict.as_object(), "update", (object_dict,))?;
-        }
+        // merge __dict__ and __class__
+        Self::merge_class_dict(dict.as_object(), its_class, vm)?;
 
         let attributes: Vec<_> = dict.into_iter().map(|(k, _v)| k).collect();
-
         Ok(PyList::from(attributes))
+    }
+
+    pub fn merge_class_dict(
+        dict: &PyObject,
+        attribute_class: PyObjectRef,
+        vm: &VirtualMachine,
+    ) -> PyResult<()> {
+        let class_dict = attribute_class.clone().get_attr("__dict__", vm)?;
+        vm.call_method(dict, "update", (class_dict,))?;
+
+        if let Ok(bases) = attribute_class.get_attr("__bases__", vm) {
+            // TODO: should switch to PySequence_Size and PySequence_GetItem
+            let bases = PyTupleRef::try_from_object(vm, bases)?;
+            for idx in 0..bases.len() {
+                let base = bases.fast_getitem(idx);
+                Self::merge_class_dict(dict, base, vm)?;
+            }
+        }
+
+        Ok(())
     }
 
     #[pymethod(magic)]

@@ -9,11 +9,12 @@ use crate::common::{
 };
 use crate::{
     function::{FuncArgs, KwArgs, OptionalArg},
-    types::{Callable, GetAttr, PyTypeFlags, PyTypeSlots, SetAttr},
-    IdProtocol, PyAttributes, PyClassImpl, PyContext, PyLease, PyObjectRef, PyObjectWeak, PyRef,
-    PyResult, PyValue, StaticType, TypeProtocol, VirtualMachine,
+    pyobject::TryFromObject,
+    types::{Callable, Constructor, GetAttr, PyTypeFlags, PyTypeSlots, SetAttr},
+    IdProtocol, ItemProtocol, PyAttributes, PyClassImpl, PyContext, PyLease, PyObjectRef,
+    PyObjectWeak, PyRef, PyResult, PyValue, StaticType, TypeProtocol, VirtualMachine,
 };
-use itertools::Itertools;
+use itertools::{Either, Itertools};
 use std::collections::HashSet;
 use std::fmt;
 use std::ops::Deref;
@@ -212,7 +213,7 @@ impl PyTypeRef {
     }
 }
 
-#[pyimpl(with(GetAttr, SetAttr, Callable), flags(BASETYPE))]
+#[pyimpl(with(GetAttr, SetAttr, Callable, Constructor), flags(BASETYPE))]
 impl PyType {
     // bound method for every type
     pub(crate) fn __new__(zelf: PyRef<Self>, args: FuncArgs, vm: &VirtualMachine) -> PyResult {
@@ -381,148 +382,6 @@ impl PyType {
     fn mro(zelf: PyRef<Self>) -> Vec<PyObjectRef> {
         zelf.iter_mro().map(|cls| cls.clone().into()).collect()
     }
-    #[pyslot]
-    fn slot_new(metatype: PyTypeRef, args: FuncArgs, vm: &VirtualMachine) -> PyResult {
-        vm_trace!("type.__new__ {:?}", args);
-
-        let is_type_type = metatype.is(&vm.ctx.types.type_type);
-        if is_type_type && args.args.len() == 1 && args.kwargs.is_empty() {
-            return Ok(args.args[0].clone_class().into());
-        }
-
-        if args.args.len() != 3 {
-            return Err(vm.new_type_error(if is_type_type {
-                "type() takes 1 or 3 arguments".to_owned()
-            } else {
-                format!(
-                    "type.__new__() takes exactly 3 arguments ({} given)",
-                    args.args.len()
-                )
-            }));
-        }
-
-        let (name, bases, dict, kwargs): (PyStrRef, PyTupleRef, PyDictRef, KwArgs) =
-            args.clone().bind(vm)?;
-
-        let bases = bases.as_slice();
-        let (metatype, base, bases) = if bases.is_empty() {
-            let base = vm.ctx.types.object_type.clone();
-            (metatype, base.clone(), vec![base])
-        } else {
-            let bases = bases
-                .iter()
-                .map(|obj| {
-                    obj.clone().downcast::<PyType>().or_else(|obj| {
-                        if vm.get_attribute_opt(obj, "__mro_entries__")?.is_some() {
-                            Err(vm.new_type_error(
-                                "type() doesn't support MRO entry resolution; \
-                                 use types.new_class()"
-                                    .to_owned(),
-                            ))
-                        } else {
-                            Err(vm.new_type_error("bases must be types".to_owned()))
-                        }
-                    })
-                })
-                .collect::<PyResult<Vec<_>>>()?;
-
-            // Search the bases for the proper metatype to deal with this:
-            let winner = calculate_meta_class(metatype.clone(), &bases, vm)?;
-            let metatype = if !winner.is(&metatype) {
-                #[allow(clippy::redundant_clone)] // false positive
-                if let Some(ref slot_new) = winner.clone().slots.new.load() {
-                    // Pass it to the winner
-                    return slot_new(winner, args, vm);
-                }
-                winner
-            } else {
-                metatype
-            };
-
-            let base = best_base(&bases, vm)?;
-
-            (metatype, base, bases)
-        };
-
-        let mut attributes = dict.to_attributes();
-        if let Some(f) = attributes.get_mut("__new__") {
-            if f.class().is(&vm.ctx.types.function_type) {
-                *f = PyStaticMethod::from(f.clone()).into_object(vm);
-            }
-        }
-
-        if let Some(f) = attributes.get_mut("__init_subclass__") {
-            if f.class().is(&vm.ctx.types.function_type) {
-                *f = PyClassMethod::from(f.clone()).into_object(vm);
-            }
-        }
-
-        if let Some(f) = attributes.get_mut("__class_getitem__") {
-            if f.class().is(&vm.ctx.types.function_type) {
-                *f = PyClassMethod::from(f.clone()).into_object(vm);
-            }
-        }
-
-        // All *classes* should have a dict. Exceptions are *instances* of
-        // classes that define __slots__ and instances of built-in classes
-        // (with exceptions, e.g function)
-        if !attributes.contains_key("__dict__") {
-            attributes.insert(
-                "__dict__".to_owned(),
-                vm.ctx
-                    .new_getset(
-                        "__dict__",
-                        vm.ctx.types.object_type.clone(),
-                        subtype_get_dict,
-                        subtype_set_dict,
-                    )
-                    .into(),
-            );
-        }
-
-        // TODO: Flags is currently initialized with HAS_DICT. Should be
-        // updated when __slots__ are supported (toggling the flag off if
-        // a class has __slots__ defined).
-        let flags = PyTypeFlags::heap_type_flags() | PyTypeFlags::HAS_DICT;
-        let slots = PyTypeSlots::from_flags(flags);
-
-        let typ = Self::new_verbose_ref(name.as_str(), base, bases, attributes, slots, metatype)
-            .map_err(|e| vm.new_type_error(e))?;
-
-        // avoid deadlock
-        let attributes = typ
-            .attributes
-            .read()
-            .iter()
-            .filter_map(|(name, obj)| {
-                vm.get_method(obj.clone(), "__set_name__").map(|res| {
-                    res.map(|meth| (obj.clone(), PyStr::from(name.clone()).into_ref(vm), meth))
-                })
-            })
-            .collect::<PyResult<Vec<_>>>()?;
-        for (obj, name, set_name) in attributes {
-            vm.invoke(&set_name, (typ.clone(), name.clone()))
-                .map_err(|e| {
-                    let err = vm.new_runtime_error(format!(
-                        "Error calling __set_name__ on '{}' instance {} in '{}'",
-                        obj.class().name(),
-                        name,
-                        typ.name()
-                    ));
-                    err.set_cause(Some(e));
-                    err
-                })?;
-        }
-
-        if let Some(initter) = typ.get_super_attr("__init_subclass__") {
-            let initter = vm
-                .call_get_descriptor_specific(initter.clone(), None, Some(typ.clone().into()))
-                .unwrap_or(Ok(initter))?;
-            vm.invoke(&initter, kwargs)?;
-        };
-
-        Ok(typ.into())
-    }
 
     #[pyproperty(magic)]
     fn dict(zelf: PyRef<Self>) -> PyMappingProxy {
@@ -666,6 +525,189 @@ impl Callable for PyType {
         }
         Ok(obj)
     }
+}
+
+impl Constructor for PyType {
+    type Args = FuncArgs;
+
+    fn py_new(metatype: PyTypeRef, args: Self::Args, vm: &VirtualMachine) -> PyResult {
+        vm_trace!("type.__new__ {:?}", args);
+
+        let is_type_type = metatype.is(&vm.ctx.types.type_type);
+        if is_type_type && args.args.len() == 1 && args.kwargs.is_empty() {
+            return Ok(args.args[0].clone_class().into());
+        }
+
+        if args.args.len() != 3 {
+            return Err(vm.new_type_error(if is_type_type {
+                "type() takes 1 or 3 arguments".to_owned()
+            } else {
+                format!(
+                    "type.__new__() takes exactly 3 arguments ({} given)",
+                    args.args.len()
+                )
+            }));
+        }
+
+        let (name, bases, dict, kwargs): (PyStrRef, PyTupleRef, PyDictRef, KwArgs) =
+            args.clone().bind(vm)?;
+
+        // TODO: refactor this code without Either or improve match to map
+        let (metatype, base, bases) =
+            match type_new_get_bases(metatype, args, bases.as_slice(), vm)? {
+                Either::Left((metatype, base, bases)) => (metatype, base, bases),
+                Either::Right(winner) => {
+                    return Ok(winner);
+                }
+            };
+
+        // TODO(snowapril) : type_new_get_slots
+        let slots = dict
+            .get_item_option("__slots__", vm)?
+            .map(|slots| {
+                if slots.payload_if_subclass::<PyStr>(vm).is_some() {
+                    Ok(PyTuple::new_ref(vec![slots], &vm.ctx))
+                } else {
+                    PyTupleRef::try_from_object(vm, slots)
+                }
+            })
+            .transpose()?;
+
+        let mut attributes = dict.to_attributes();
+        if let Some(f) = attributes.get_mut("__new__") {
+            if f.class().is(&vm.ctx.types.function_type) {
+                *f = PyStaticMethod::from(f.clone()).into_object(vm);
+            }
+        }
+
+        if let Some(f) = attributes.get_mut("__init_subclass__") {
+            if f.class().is(&vm.ctx.types.function_type) {
+                *f = PyClassMethod::from(f.clone()).into_object(vm);
+            }
+        }
+
+        if let Some(f) = attributes.get_mut("__class_getitem__") {
+            if f.class().is(&vm.ctx.types.function_type) {
+                *f = PyClassMethod::from(f.clone()).into_object(vm);
+            }
+        }
+
+        // All *classes* should have a dict. Exceptions are *instances* of
+        // classes that define __slots__ and instances of built-in classes
+        // (with exceptions, e.g function)
+        if !attributes.contains_key("__dict__") {
+            attributes.insert(
+                "__dict__".to_owned(),
+                vm.ctx
+                    .new_getset(
+                        "__dict__",
+                        vm.ctx.types.object_type.clone(),
+                        subtype_get_dict,
+                        subtype_set_dict,
+                    )
+                    .into(),
+            );
+        }
+
+        // TODO(snowapril) : type_new_alloc
+        // TODO: Flags is currently initialized with HAS_DICT. Should be
+        // updated when __slots__ are supported (toggling the flag off if
+        // a class has __slots__ defined).
+        let flags = PyTypeFlags::heap_type_flags() | PyTypeFlags::HAS_DICT;
+        let slots = PyTypeSlots::from_flags(flags);
+
+        let typ = Self::new_verbose_ref(name.as_str(), base, bases, attributes, slots, metatype)
+            .map_err(|e| vm.new_type_error(e))?;
+
+        // avoid deadlock
+        // TODO(snowapril) : type_new_set_names
+        let attributes = typ
+            .attributes
+            .read()
+            .iter()
+            .filter_map(|(name, obj)| {
+                vm.get_method(obj.clone(), "__set_name__").map(|res| {
+                    res.map(|meth| (obj.clone(), PyStr::from(name.clone()).into_ref(vm), meth))
+                })
+            })
+            .collect::<PyResult<Vec<_>>>()?;
+        for (obj, name, set_name) in attributes {
+            vm.invoke(&set_name, (typ.clone(), name.clone()))
+                .map_err(|e| {
+                    let err = vm.new_runtime_error(format!(
+                        "Error calling __set_name__ on '{}' instance {} in '{}'",
+                        obj.class().name(),
+                        name,
+                        typ.name()
+                    ));
+                    err.set_cause(Some(e));
+                    err
+                })?;
+        }
+
+        // TODO(snowapril) : type_new_init_subclass
+        if let Some(initter) = typ.get_super_attr("__init_subclass__") {
+            let initter = vm
+                .call_get_descriptor_specific(initter.clone(), None, Some(typ.clone().into()))
+                .unwrap_or(Ok(initter))?;
+            vm.invoke(&initter, kwargs)?;
+        };
+
+        Ok(typ.into())
+    }
+}
+
+fn type_new_get_bases(
+    metatype: PyTypeRef,
+    args: FuncArgs,
+    bases: &[PyObjectRef],
+    vm: &VirtualMachine,
+) -> PyResult<Either<(PyTypeRef, PyTypeRef, Vec<PyTypeRef>), PyObjectRef>> {
+    if bases.is_empty() {
+        let base = vm.ctx.types.object_type.clone();
+        return Ok(Either::Left((metatype, base.clone(), vec![base])));
+    }
+
+    let bases = bases
+        .iter()
+        .map(|obj| {
+            obj.clone().downcast::<PyType>().or_else(|obj| {
+                if vm.get_attribute_opt(obj, "__mro_entries__")?.is_some() {
+                    Err(vm.new_type_error(
+                        "type() doesn't support MRO entry resolution; \
+                         use types.new_class()"
+                            .to_owned(),
+                    ))
+                } else {
+                    Err(vm.new_type_error("bases must be types".to_owned()))
+                }
+            })
+        })
+        .collect::<PyResult<Vec<_>>>()?;
+
+    // Search the bases for the proper metatype to deal with this:
+    let winner = calculate_meta_class(metatype.clone(), &bases, vm)?;
+    let metatype = if !winner.is(&metatype) {
+        if let Some(ref slot_new) = winner.clone().slots.new.load() {
+            // Pass it to the winner
+            return Ok(Either::Right(slot_new(winner, args, vm)?));
+        }
+        winner
+    } else {
+        metatype
+    };
+
+    let base = best_base(&bases, vm)?;
+
+    Ok(Either::Left((metatype, base, bases)))
+}
+
+fn type_new_init() -> PyResult<()> {
+    Ok(())
+}
+
+fn type_new_set_attrs() -> PyResult<()> {
+    Ok(())
 }
 
 fn find_base_dict_descr(cls: &PyTypeRef, vm: &VirtualMachine) -> Option<PyObjectRef> {

@@ -2,6 +2,7 @@ use super::pystr::IntoPyStrRef;
 use super::{PyDictRef, PyStr, PyStrRef, PyTypeRef};
 use crate::{
     function::{FuncArgs, IntoPyObject},
+    pyobject::TryFromObject,
     types::GetAttr,
     ItemProtocol, PyClassImpl, PyContext, PyObjectRef, PyObjectView, PyRef, PyResult, PyValue,
     VirtualMachine,
@@ -81,11 +82,15 @@ impl PyModule {
 
     #[pymethod(magic)]
     fn dir(zelf: PyRef<Self>, vm: &VirtualMachine) -> PyResult<Vec<PyObjectRef>> {
-        let dict = zelf
-            .as_object()
-            .dict()
-            .ok_or_else(|| vm.new_value_error("module has no dict".to_owned()))?;
-        let attrs = dict.into_iter().map(|(k, _v)| k).collect();
+        let attrs = match zelf.get_attr("__dict__", vm) {
+            Ok(dict) => {
+                let dict = PyDictRef::try_from_object(vm, dict).map_err(|_| {
+                    vm.new_type_error("<module>.__dict__ is not a dictionary".to_owned())
+                })?;
+                dict.into_iter().map(|(k, _v)| k).collect()
+            }
+            Err(_) => Vec::new(),
+        };
         Ok(attrs)
     }
 }
