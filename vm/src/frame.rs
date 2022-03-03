@@ -972,19 +972,10 @@ impl ExecutingFrame<'_> {
                 }
                 Ok(None)
             }
-
-            bytecode::Instruction::JumpIfTrueOrPop { target } => {
-                let obj = self.last_value();
-                let value = obj.try_to_bool(vm)?;
-                if value {
-                    self.jump(*target);
-                } else {
-                    self.pop_value();
-                }
-                Ok(None)
-            }
-
-            bytecode::Instruction::JumpIfFalseOrPop { target } => {
+             
+            bytecode::Instruction::JumpIfTrueOrPop { target } |
+            bytecode::Instruction::JumpIfFalseOrPop { target } |
+            bytecode::Instruction::JumpIfNotExcMatch { target }  => {
                 let obj = self.last_value();
                 let value = obj.try_to_bool(vm)?;
                 if !value {
