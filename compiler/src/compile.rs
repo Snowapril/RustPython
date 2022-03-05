@@ -953,7 +953,7 @@ impl Compiler {
                 });
 
                 // We cannot handle this exception type:
-                self.emit(Instruction::JumpIfFalse {
+                self.emit(Instruction::JumpIfNotExcMatch {
                     target: next_handler,
                 });
 

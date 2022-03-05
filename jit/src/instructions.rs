@@ -212,6 +212,12 @@ impl<'a, 'b> FunctionCompiler<'a, 'b> {
 
                 Ok(())
             }
+            Instruction::JumpIfNotExcMatch { target } => {
+                let right = self.stack.pop().ok_or(JitCompileError::BadBytecode)?;
+                let left = self.stack.pop().ok_or(JitCompileError::BadBytecode)?;
+
+                Ok(())
+            }
             Instruction::Jump { target } => {
                 let target_block = self.get_or_create_block(*target);
                 self.builder.ins().jump(target_block, &[]);

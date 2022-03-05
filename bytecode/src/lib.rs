@@ -295,6 +295,9 @@ pub enum Instruction {
     JumpIfFalseOrPop {
         target: Label,
     },
+    JumpIfNotExcMatch {
+        target: Label,
+    },
     MakeFunction(MakeFunctionFlags),
     CallFunctionPositional {
         nargs: u32,
@@ -327,7 +330,6 @@ pub enum Instruction {
     SetupLoop {
         break_target: Label,
     },
-
     /// Setup a finally handler, which will be called whenever one of this events occurs:
     /// - the block is popped
     /// - the function returns
@@ -893,6 +895,7 @@ impl Instruction {
             | JumpIfTrueOrPop { target: l }
             | JumpIfFalseOrPop { target: l }
             | ForIter { target: l }
+            | JumpIfNotExcMatch { target: l }
             | SetupFinally { handler: l }
             | SetupExcept { handler: l }
             | SetupWith { end: l }
@@ -913,6 +916,7 @@ impl Instruction {
             | JumpIfTrueOrPop { target: l }
             | JumpIfFalseOrPop { target: l }
             | ForIter { target: l }
+            | JumpIfNotExcMatch { target: l }
             | SetupFinally { handler: l }
             | SetupExcept { handler: l }
             | SetupWith { end: l }
@@ -985,6 +989,7 @@ impl Instruction {
                     -1
                 }
             }
+            JumpIfNotExcMatch { .. } => -2,
             MakeFunction(flags) => {
                 -2 - flags.contains(MakeFunctionFlags::CLOSURE) as i32
                     - flags.contains(MakeFunctionFlags::ANNOTATIONS) as i32
@@ -1165,6 +1170,7 @@ impl Instruction {
             JumpIfFalse { target } => w!(JumpIfFalse, target),
             JumpIfTrueOrPop { target } => w!(JumpIfTrueOrPop, target),
             JumpIfFalseOrPop { target } => w!(JumpIfFalseOrPop, target),
+            JumpIfNotExcMatch { target } => w!(JumpIfNotExcMatch, target),
             MakeFunction(flags) => w!(MakeFunction, format_args!("{:?}", flags)),
             CallFunctionPositional { nargs } => w!(CallFunctionPositional, nargs),
             CallFunctionKeyword { nargs } => w!(CallFunctionKeyword, nargs),
