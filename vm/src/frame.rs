@@ -614,6 +614,17 @@ impl ExecutingFrame<'_> {
                 self.push_value(value);
                 Ok(None)
             }
+            bytecode::Instruction::DuplicateTopTwo => {
+                // Duplicates the two references on top of the stack,
+                // leaving them in the same order.
+                let top = self.pop_value();
+                let second = self.pop_value();
+                self.push_value(second.clone());
+                self.push_value(top.clone());
+                self.push_value(second);
+                self.push_value(top);
+                Ok(None)
+            }
             bytecode::Instruction::Rotate { amount } => self.execute_rotate(*amount),
             bytecode::Instruction::BuildString { size } => {
                 let s = self

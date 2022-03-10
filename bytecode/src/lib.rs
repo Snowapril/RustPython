@@ -269,6 +269,7 @@ pub enum Instruction {
         amount: u32,
     },
     Duplicate,
+    DuplicateTopTwo,
     GetIter,
     Continue {
         target: Label,
@@ -973,6 +974,7 @@ impl Instruction {
             Pop => -1,
             Rotate { .. } => 0,
             Duplicate => 1,
+            DuplicateTopTwo => 2,
             GetIter => 0,
             Continue { .. } => 0,
             Break => 0,
@@ -1157,6 +1159,7 @@ impl Instruction {
             Pop => w!(Pop),
             Rotate { amount } => w!(Rotate, amount),
             Duplicate => w!(Duplicate),
+            DuplicateTopTwo => w!(DuplicateTopTwo),
             GetIter => w!(GetIter),
             Continue { target } => w!(Continue, target),
             Break => w!(Break),

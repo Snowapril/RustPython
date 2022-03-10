@@ -764,12 +764,46 @@ impl Compiler {
                 }
             }
             AugAssign { target, op, value } => {
-                self.compile_expression(target)?;
-                self.compile_expression(value)?;
+                self.set_source_location(target.location);
+                let old_source_loc = self.current_source_location.clone();
 
+                match &target.node {
+                    ast::ExprKind::Name { id, .. } => self.load_name(id)?,
+                    ast::ExprKind::Attribute { value, attr, .. } => {
+                        self.compile_expression(value)?;
+                        self.emit(Instruction::Duplicate);
+                        let idx = self.name(attr);
+                        self.emit(Instruction::LoadAttr { idx });
+                    }
+                    ast::ExprKind::Subscript { value, slice, .. } => {
+                        self.compile_expression(value)?;
+                        self.compile_expression(slice)?;
+                        self.emit(Instruction::DuplicateTopTwo);
+                        self.emit(Instruction::Subscript);
+                    }
+                    _ => unreachable!(),
+                };
+                self.set_source_location(old_source_loc);
+
+                self.compile_expression(value)?;
                 // Perform operation:
                 self.compile_op(op, true);
-                self.compile_store(target)?;
+
+                self.set_source_location(target.location);
+                match &target.node {
+                    ast::ExprKind::Name { id, .. } => self.store_name(id)?,
+                    ast::ExprKind::Attribute { attr, .. } => {
+                        self.check_forbidden_name(attr, NameUsage::Store)?;
+                        self.emit(Instruction::Rotate { amount: 2u32 });
+                        let idx = self.name(attr);
+                        self.emit(Instruction::StoreAttr { idx });
+                    }
+                    ast::ExprKind::Subscript { .. } => {
+                        self.emit(Instruction::Rotate { amount: 3u32 });
+                        self.emit(Instruction::StoreSubscript);
+                    }
+                    _ => unreachable!(),
+                };
             }
             AnnAssign {
                 target,

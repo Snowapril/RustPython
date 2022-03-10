@@ -132,6 +132,13 @@ impl StackMachine {
                 let value = self.stack.last().unwrap().clone();
                 self.stack.push(value);
             }
+            Instruction::DuplicateTopTwo => {
+                let len = self.stack.len();
+                let top = self.stack[len - 1].clone();
+                let second = self.stack[len - 2].clone();
+                self.stack.push(second);
+                self.stack.push(top);
+            }
             Instruction::Rotate { amount } => {
                 let mut values = Vec::new();
 
