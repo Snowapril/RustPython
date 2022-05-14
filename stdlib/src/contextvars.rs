@@ -3,10 +3,11 @@ pub(crate) use _contextvars::make_module;
 #[pymodule]
 mod _contextvars {
     use crate::vm::{
-        builtins::{PyFunction, PyStrRef, PyTypeRef},
+        builtins::{PyFunction, PyGenericAlias, PyStrRef, PyTypeRef},
+        common::hash::PyHash,
         function::{ArgCallable, FuncArgs, OptionalArg},
-        types::Initializer,
-        PyObjectRef, PyPayload, PyRef, PyResult, VirtualMachine,
+        types::{Constructor, Hashable, Initializer},
+        AsObject, Py, PyObjectRef, PyPayload, PyRef, PyResult, VirtualMachine,
     };
 
     #[pyattr]
@@ -84,9 +85,12 @@ mod _contextvars {
     #[derive(Debug, PyPayload)]
     struct ContextVar {
         #[allow(dead_code)] // TODO: RUSTPYTHON
-        name: String,
+        name: PyStrRef,
         #[allow(dead_code)] // TODO: RUSTPYTHON
         default: Option<PyObjectRef>,
+        cached: Option<PyObjectRef>,
+        cached_tsid: u64,
+        cached_tsver: u64,
     }
 
     #[derive(FromArgs)]
@@ -99,10 +103,10 @@ mod _contextvars {
         default: OptionalArg<PyObjectRef>,
     }
 
-    #[pyimpl(with(Initializer))]
+    #[pyimpl(with(Hashable, Constructor))]
     impl ContextVar {
         #[pyproperty]
-        fn name(&self) -> String {
+        fn name(&self) -> PyStrRef {
             self.name.clone()
         }
 
@@ -130,27 +134,50 @@ mod _contextvars {
         }
 
         #[pyclassmethod(magic)]
-        fn class_getitem(_cls: PyTypeRef, _key: PyStrRef, _vm: &VirtualMachine) -> PyResult<()> {
-            unimplemented!("ContextVar.__class_getitem__() is currently under construction")
+        fn class_getitem(cls: PyTypeRef, args: PyObjectRef, vm: &VirtualMachine) -> PyGenericAlias {
+            PyGenericAlias::new(cls, args, vm)
         }
 
         #[pymethod(magic)]
-        fn repr(_zelf: PyRef<Self>, _vm: &VirtualMachine) -> String {
-            unimplemented!("<ContextVar name={{}} default={{}} at {{}}")
-            // format!(
-            //     "<ContextVar name={} default={:?} at {:#x}>",
-            //     zelf.name.as_str(),
-            //     zelf.default.map_or("", |x| PyStr::from(*x).as_str()),
-            //     zelf.get_id()
-            // )
+        fn repr(zelf: PyRef<Self>, vm: &VirtualMachine) -> PyResult<String> {
+            Ok(if let Some(default) = zelf.default.clone() {
+                format!(
+                    "<ContextVar name={} default={} at {:#x}>",
+                    zelf.name.as_object().repr(vm)?,
+                    default.repr(vm)?,
+                    zelf.get_id()
+                )
+            } else {
+                format!(
+                    "<ContextVar name={} at {:#x}>",
+                    zelf.name.as_object().repr(vm)?,
+                    zelf.get_id()
+                )
+            })
         }
     }
 
-    impl Initializer for ContextVar {
+    impl Constructor for ContextVar {
         type Args = ContextVarOptions;
 
-        fn init(_obj: PyRef<Self>, _args: Self::Args, _vm: &VirtualMachine) -> PyResult<()> {
-            unimplemented!("ContextVar.__init__() is currently under construction")
+        fn py_new(cls: PyTypeRef, args: Self::Args, vm: &VirtualMachine) -> PyResult {
+            ContextVar {
+                name: args.name,
+                default: args.default.into_option(),
+                cached: None,
+                cached_tsid: 0u64,
+                cached_tsver: 0u64,
+            }
+            .into_ref_with_type(vm, cls)
+            .map(Into::into)
+        }
+    }
+
+    impl Hashable for ContextVar {
+        #[inline]
+        fn hash(zelf: &Py<Self>, vm: &VirtualMachine) -> PyResult<PyHash> {
+            let name_hash = zelf.name.as_object().hash(vm)?;
+            Ok(zelf.get_id() as i64 ^ name_hash)
         }
     }
 
