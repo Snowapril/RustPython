@@ -176,9 +176,9 @@ impl PyList {
     }
 
     #[pymethod(magic)]
-    fn sizeof(&self) -> usize {
-        std::mem::size_of::<Self>()
-            + self.elements.read().capacity() * std::mem::size_of::<PyObjectRef>()
+    fn sizeof(zelf: PyRef<Self>) -> usize {
+        zelf.class().slots.basicsize
+            + zelf.elements.read().capacity() * std::mem::size_of::<PyObjectRef>()
     }
 
     #[pymethod]

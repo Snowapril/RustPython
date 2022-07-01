@@ -25,6 +25,8 @@ pub struct PyTypeSlots {
     pub name: PyRwLock<Option<String>>, // tp_name, not class name
 
     pub basicsize: usize,
+    pub itemsize: usize,
+    pub objectsize: AtomicCell<Option<ObjectSizeFunc>>,
     // tp_itemsize
 
     // Methods to implement standard operations
@@ -51,8 +53,6 @@ pub struct PyTypeSlots {
     // Iterators
     pub iter: AtomicCell<Option<IterFunc>>,
     pub iternext: AtomicCell<Option<IterNextFunc>>,
-
-    pub sizeof: AtomicCell<Option<SizeOfFunc>>,
 
     // Flags to define presence of optional/expanded features
     pub flags: PyTypeFlags,
@@ -164,7 +164,7 @@ pub(crate) type NewFunc = fn(PyTypeRef, FuncArgs, &VirtualMachine) -> PyResult;
 pub(crate) type InitFunc = fn(PyObjectRef, FuncArgs, &VirtualMachine) -> PyResult<()>;
 pub(crate) type DelFunc = fn(&PyObject, &VirtualMachine) -> PyResult<()>;
 pub(crate) type AsSequenceFunc = fn(&PyObject, &VirtualMachine) -> &'static PySequenceMethods;
-pub(crate) type SizeOfFunc = fn(&PyObject, &VirtualMachine) -> PyResult<usize>;
+pub(crate) type ObjectSizeFunc = fn(&PyObject, &VirtualMachine) -> PyResult<usize>;
 
 // slot_sq_length
 pub(crate) fn slot_length(obj: &PyObject, vm: &VirtualMachine) -> PyResult<usize> {
@@ -950,21 +950,15 @@ where
 }
 
 #[pyimpl]
-pub trait SizeOf: PyPayload {
+pub trait ObjectSize: PyPayload {
     #[pyslot]
-    fn slot_sizeof(zelf: &PyObject, vm: &VirtualMachine) -> PyResult<usize> {
+    fn slot_objectsize(zelf: &PyObject, vm: &VirtualMachine) -> PyResult<usize> {
         if let Some(zelf) = zelf.downcast_ref() {
-            Self::sizeof(zelf)
+            Self::objectsize(zelf)
         } else {
-            Err(vm.new_type_error("unexpected payload for __sizeof__".to_owned()))
+            Err(vm.new_type_error("unexpected payload for __objectsize__".to_owned()))
         }
     }
 
-    fn sizeof(zelf: &Py<Self>) -> PyResult<usize>;
-
-    #[inline]
-    #[pymethod]
-    fn __sizeof__(zelf: PyObjectRef, vm: &VirtualMachine) -> PyResult {
-        Self::slot_sizeof(&zelf, vm).to_pyresult(vm)
-    }
+    fn objectsize(zelf: &Py<Self>) -> PyResult<usize>;
 }

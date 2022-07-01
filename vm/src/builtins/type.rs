@@ -251,6 +251,16 @@ impl PyType {
         PyTuple::new_unchecked(elements.into_boxed_slice())
     }
 
+    #[pyproperty(name = "__basicsize__")]
+    fn basicsize(&self) -> usize {
+        self.slots.basicsize
+    }
+
+    #[pyproperty(name = "__itemsize__")]
+    fn itemsize(&self) -> usize {
+        self.slots.itemsize
+    }
+
     #[pyproperty(magic)]
     fn bases(&self, vm: &VirtualMachine) -> PyTupleRef {
         vm.ctx.new_tuple(

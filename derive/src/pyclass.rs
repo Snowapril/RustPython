@@ -104,6 +104,7 @@ pub(crate) fn impl_pyimpl(attr: AttributeArgs, item: Item) -> Result<TokenStream
                 with_impl,
                 flags,
                 with_slots,
+                item_size,
             } = extract_impl_attrs(attr, &Ident::new(&quote!(ty).to_string(), ty.span()))?;
 
             let getset_impl = &context.getset_items;
@@ -114,6 +115,7 @@ pub(crate) fn impl_pyimpl(attr: AttributeArgs, item: Item) -> Result<TokenStream
                 #imp
                 impl ::rustpython_vm::class::PyClassImpl for #ty {
                     const TP_FLAGS: ::rustpython_vm::types::PyTypeFlags = #flags;
+                    const ITEMSIZE: usize : #item_size;
 
                     fn impl_extend_class(
                         ctx: &::rustpython_vm::Context,
@@ -929,6 +931,7 @@ struct ExtractedImplAttrs {
     with_impl: TokenStream,
     with_slots: TokenStream,
     flags: TokenStream,
+    item_size: TokenStream,
 }
 
 fn extract_impl_attrs(attr: AttributeArgs, item: &Ident) -> Result<ExtractedImplAttrs> {
@@ -945,6 +948,7 @@ fn extract_impl_attrs(attr: AttributeArgs, item: &Ident) -> Result<ExtractedImpl
             }
         }
     }];
+    let mut item_size = quote! { 0 };
 
     for attr in attr {
         match attr {
@@ -997,6 +1001,25 @@ fn extract_impl_attrs(attr: AttributeArgs, item: &Ident) -> Result<ExtractedImpl
                             }
                         }
                     }
+                } else if path_eq(&path, "item_size") {
+                    let meta = nested.first().ok_or_else(|| {
+                        err_span!(path, "#[pyimpl(item_size(...))] arguments should specified")
+                    })?;
+                    match meta {
+                        NestedMeta::Meta(Meta::Path(path)) => {
+                            if let Some(ident) = path.get_ident() {
+                                item_size = quote!(std::mem::size_of::<#ident>());
+                            } else {
+                                bail_span!(
+                                    path,
+                                    "#[pyimpl(item_size(...))] arguments should be ident"
+                                )
+                            }
+                        }
+                        meta => {
+                            bail_span!(meta, "#[pyimpl(item_size(...))] arguments should be ident")
+                        }
+                    }
                 } else {
                     bail_span!(path, "Unknown pyimpl attribute")
                 }
@@ -1014,6 +1037,9 @@ fn extract_impl_attrs(attr: AttributeArgs, item: &Ident) -> Result<ExtractedImpl
         },
         with_slots: quote! {
             #(#with_slots)*
+        },
+        item_size: quote! {
+            #(#item_size)
         },
     })
 }

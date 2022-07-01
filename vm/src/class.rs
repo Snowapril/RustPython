@@ -75,6 +75,7 @@ where
 
 pub trait PyClassImpl: PyClassDef {
     const TP_FLAGS: PyTypeFlags = PyTypeFlags::DEFAULT;
+    const ITEMSIZE: usize = 0;
 
     fn impl_extend_class(ctx: &Context, class: &'static Py<PyType>);
 
@@ -137,6 +138,7 @@ pub trait PyClassImpl: PyClassDef {
             flags: Self::TP_FLAGS,
             name: PyRwLock::new(Some(Self::TP_NAME.to_owned())),
             basicsize: Self::BASICSIZE,
+            itemsize: Self::ITEMSIZE,
             doc: Self::DOC,
             ..Default::default()
         };
