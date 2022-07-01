@@ -1,7 +1,7 @@
 /*! Python `property` descriptor class.
 
 */
-use super::{PyType, PyTypeRef};
+use super::{PyTupleRef, PyType, PyTypeRef};
 use crate::common::lock::PyRwLock;
 use crate::{
     class::PyClassImpl,
@@ -49,6 +49,7 @@ pub struct PyProperty {
     setter: PyRwLock<Option<PyObjectRef>>,
     deleter: PyRwLock<Option<PyObjectRef>>,
     doc: PyRwLock<Option<PyObjectRef>>,
+    name: PyRwLock<Option<PyObjectRef>>,
 }
 
 impl PyPayload for PyProperty {
@@ -82,7 +83,11 @@ impl GetDescriptor for PyProperty {
         } else if let Some(getter) = zelf.getter.read().as_ref() {
             vm.invoke(getter, (obj,))
         } else {
-            Err(vm.new_attribute_error("unreadable attribute".to_string()))
+            if let Some(name) = zelf.name.read() {
+                Err(vm.new_attribute_error(format!("unreadable attribute {}", name)))
+            } else {
+                Err(vm.new_attribute_error("unreadable attribute".to_string()))
+            }
         }
     }
 }
@@ -104,14 +109,22 @@ impl PyProperty {
                 if let Some(setter) = zelf.setter.read().as_ref() {
                     vm.invoke(setter, (obj, value)).map(drop)
                 } else {
-                    Err(vm.new_attribute_error("can't set attribute".to_owned()))
+                    if let Some(name) = zelf.name.read() {
+                        Err(vm.new_attribute_error(format!("can't set attribute {}", name)))
+                    } else {
+                        Err(vm.new_attribute_error("can't set attribute".to_string()))
+                    }
                 }
             }
             None => {
                 if let Some(deleter) = zelf.deleter.read().as_ref() {
                     vm.invoke(deleter, (obj,)).map(drop)
                 } else {
-                    Err(vm.new_attribute_error("can't delete attribute".to_owned()))
+                    if let Some(name) = zelf.name.read() {
+                        Err(vm.new_attribute_error(format!("can't delete attribute {}", name)))
+                    } else {
+                        Err(vm.new_attribute_error("can't delete attribute".to_string()))
+                    }
                 }
             }
         }
@@ -167,6 +180,7 @@ impl PyProperty {
             setter: PyRwLock::new(zelf.fset()),
             deleter: PyRwLock::new(zelf.fdel()),
             doc: PyRwLock::new(None),
+            name: PyRwLock::new(zelf.name.read().clone()),
         }
         .into_ref_with_type(vm, zelf.class().clone())
     }
@@ -182,6 +196,7 @@ impl PyProperty {
             setter: PyRwLock::new(setter.or_else(|| zelf.fset())),
             deleter: PyRwLock::new(zelf.fdel()),
             doc: PyRwLock::new(None),
+            name: PyRwLock::new(zelf.name.read().clone()),
         }
         .into_ref_with_type(vm, zelf.class().clone())
     }
@@ -197,8 +212,14 @@ impl PyProperty {
             setter: PyRwLock::new(zelf.fset()),
             deleter: PyRwLock::new(deleter.or_else(|| zelf.fdel())),
             doc: PyRwLock::new(None),
+            name: PyRwLock::new(zelf.name.read().clone()),
         }
         .into_ref_with_type(vm, zelf.class().clone())
+    }
+
+    #[pymethod]
+    fn set_name(zelf: PyRef<Self>, args: PyTupleRef, vm: &VirtualMachine) -> PyResult<()> {
+        Ok(())
     }
 
     #[pyproperty(magic)]
@@ -237,6 +258,7 @@ impl Constructor for PyProperty {
             setter: PyRwLock::new(None),
             deleter: PyRwLock::new(None),
             doc: PyRwLock::new(None),
+            name: PyRwLock::new(None),
         }
         .into_ref_with_type(vm, cls)
         .map(Into::into)
