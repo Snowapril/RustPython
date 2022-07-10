@@ -8,12 +8,12 @@ use crate::common::{
     lock::{PyRwLock, PyRwLockReadGuard},
 };
 use crate::{
-    builtins::PyBaseExceptionRef,
+    builtins::{function::PyCellRef, PyBaseExceptionRef},
     class::{PyClassImpl, StaticType},
     function::{FuncArgs, KwArgs, OptionalArg},
     identifier,
     types::{Callable, GetAttr, PyTypeFlags, PyTypeSlots, SetAttr},
-    AsObject, Context, Py, PyObjectRef, PyPayload, PyRef, PyResult, VirtualMachine,
+    AsObject, Context, Py, PyObjectRef, PyPayload, PyRef, PyResult, TryFromObject, VirtualMachine,
 };
 use indexmap::{map::Entry, IndexMap};
 use itertools::Itertools;
@@ -540,6 +540,18 @@ impl PyType {
 
         let typ = Self::new_verbose_ref(name.as_str(), base, bases, attributes, slots, metatype)
             .map_err(|e| vm.new_type_error(e))?;
+
+        if let Some(f) = typ.attributes.read().get(identifier!(vm, __classcell__)) {
+            let class_cell: PyCellRef =
+                <PyCellRef>::try_from_object(vm, f.clone()).map_err(|_e| {
+                    vm.new_type_error(format!(
+                        "__classcell__ must be a nonlocal cell, not {}",
+                        f.class()
+                    ))
+                })?;
+            class_cell.set(Some(typ.clone().into()));
+            // TODO : (*typ.attributes.write()).remove(identifier!(vm, __classcell__));
+        }
 
         // avoid deadlock
         let attributes = typ

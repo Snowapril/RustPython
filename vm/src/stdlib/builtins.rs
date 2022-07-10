@@ -913,7 +913,23 @@ mod builtins {
         )?;
 
         if let Some(ref classcell) = classcell {
-            classcell.set(Some(class.clone()));
+            if class.payload_if_subclass::<PyType>(vm).is_some()
+                && classcell.class().is(vm.ctx.types.cell_type)
+            {
+                match classcell.get() {
+                    Some(cell_class) => {
+                        if class.as_raw().ne(&cell_class.as_raw()) {
+                            return Err(vm.new_type_error(format!(
+                                "__class__ set to {} defining {} as {}",
+                                cell_class, name, class
+                            )));
+                        }
+                    }
+                    None => {
+                        return Err(vm.new_runtime_error(format!("__class__ not set defining {} as {}. Was __classcell__ propagated to type.__new__?", name, class)));
+                    }
+                }
+            }
         }
 
         Ok(class)
