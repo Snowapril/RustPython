@@ -170,7 +170,8 @@ pub(crate) type DescrSetFunc =
 pub(crate) type NewFunc = fn(PyTypeRef, FuncArgs, &VirtualMachine) -> PyResult;
 pub(crate) type InitFunc = fn(PyObjectRef, FuncArgs, &VirtualMachine) -> PyResult<()>;
 pub(crate) type DelFunc = fn(&PyObject, &VirtualMachine) -> PyResult<()>;
-
+pub(crate) type AsSequenceFunc = fn(&PyObject, &VirtualMachine) -> &'static PySequenceMethods;
+pub(crate) type WrapperFunc = fn(&PyObject, FuncArgs, &VirtualMachine) -> PyResult;
 // slot_sq_length
 pub(crate) fn len_wrapper(obj: &PyObject, vm: &VirtualMachine) -> PyResult<usize> {
     let ret = vm.call_special_method(obj.to_owned(), identifier!(vm, __len__), ())?;

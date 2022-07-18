@@ -702,6 +702,7 @@ impl PyType {
                 )
                 .into()
         });
+        // TODO(snowapril) : vm.ctx.types.object_type가 아니라 지금 생성되는 type
 
         // TODO: Flags is currently initialized with HAS_DICT. Should be
         // updated when __slots__ are supported (toggling the flag off if

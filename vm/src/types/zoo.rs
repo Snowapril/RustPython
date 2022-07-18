@@ -6,7 +6,7 @@ use crate::{
         object, property, pystr, range, set, singletons, slice, staticmethod, super_, traceback,
         tuple,
         type_::{self, PyType},
-        union_, weakproxy, weakref, zip,
+        union_, weakproxy, weakref, wrapperdescr, zip,
     },
     class::StaticType,
     vm::Context,
@@ -36,6 +36,8 @@ pub struct TypeZoo {
     pub enumerate_type: &'static Py<PyType>,
     pub filter_type: &'static Py<PyType>,
     pub float_type: &'static Py<PyType>,
+    pub wrapperdescr_type: &'static Py<PyType>,
+    pub methodwrapper_type: &'static Py<PyType>,
     pub frame_type: &'static Py<PyType>,
     pub frozenset_type: &'static Py<PyType>,
     pub generator_type: &'static Py<PyType>,
@@ -156,6 +158,8 @@ impl TypeZoo {
             function_type: function::PyFunction::init_bare_type(),
             generator_type: generator::PyGenerator::init_bare_type(),
             getset_type: getset::PyGetSet::init_bare_type(),
+            wrapperdescr_type: wrapperdescr::PyWrapperDescriptor::init_bare_type(),
+            methodwrapper_type: methodwrapper::PyMethodWrapper::init_bare_type(),
             iter_type: iter::PySequenceIterator::init_bare_type(),
             reverse_iter_type: enumerate::PyReverseSequenceIterator::init_bare_type(),
             list_iterator_type: list::PyListIterator::init_bare_type(),
@@ -203,6 +207,8 @@ impl TypeZoo {
         bytearray::init(context);
         property::init(context);
         getset::init(context);
+        methodwrapper::init(context);
+        wrapperdescr::init(context);
         memory::init(context);
         pystr::init(context);
         range::init(context);
