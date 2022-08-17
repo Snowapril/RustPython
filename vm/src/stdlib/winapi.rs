@@ -11,50 +11,100 @@ mod _winapi {
         PyObjectRef, PyResult, TryFromObject, VirtualMachine,
     };
     use std::ptr::{null, null_mut};
-    use winapi::shared::winerror;
-    use winapi::um::{
-        fileapi, handleapi, namedpipeapi, processenv, processthreadsapi, synchapi, winbase,
-        winnt::HANDLE,
+    use windows::Win32::Foundation;
+    use windows::Win32::Storage::FileSystem;
+    use windows::Win32::System::{
+        Memory, Threading, SystemServices, Console,
     };
+    // use winapi::shared::winerror;
+    // use winapi::um::{
+    //     fileapi, handleapi, namedpipeapi, processenv, processthreadsapi, synchapi, winbase,
+    //     winnt::HANDLE,
+    // };
 
     #[pyattr]
-    use winapi::{
-        shared::winerror::{
+    use windows::Win32::{
+        Foundation::{
             ERROR_ALREADY_EXISTS, ERROR_BROKEN_PIPE, ERROR_IO_PENDING, ERROR_MORE_DATA,
             ERROR_NETNAME_DELETED, ERROR_NO_DATA, ERROR_NO_SYSTEM_RESOURCES,
             ERROR_OPERATION_ABORTED, ERROR_PIPE_BUSY, ERROR_PIPE_CONNECTED, ERROR_SEM_TIMEOUT,
-            WAIT_TIMEOUT,
+            WAIT_TIMEOUT, STILL_ACTIVE,
+            DUPLICATE_CLOSE_SOURCE, DUPLICATE_SAME_ACCESS,
         },
-        um::{
-            fileapi::OPEN_EXISTING,
-            memoryapi::{
-                FILE_MAP_ALL_ACCESS, FILE_MAP_COPY, FILE_MAP_EXECUTE, FILE_MAP_READ, FILE_MAP_WRITE,
+        Storage::FileSystem::{
+            OPEN_EXISTING, SYNCHRONIZE, FILE_GENERIC_WRITE, FILE_GENERIC_READ,
+        },
+        System::{
+            Memory::{
+                FILE_MAP_ALL_ACCESS, SEC_COMMIT, SEC_IMAGE,
+                SEC_LARGE_PAGES, SEC_NOCACHE, SEC_RESERVE, SEC_WRITECOMBINE,
+                PAGE_EXECUTE, PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE, PAGE_EXECUTE_WRITECOPY,
+                PAGE_GUARD, PAGE_NOACCESS, PAGE_NOCACHE, PAGE_READONLY, PAGE_READWRITE,
+                PAGE_WRITECOMBINE, PAGE_WRITECOPY,
+                MEM_COMMIT, MEM_FREE, MEM_IMAGE, MEM_MAPPED, MEM_PRIVATE, MEM_RESERVE,
             },
-            minwinbase::STILL_ACTIVE,
-            winbase::{
+            Threading::{
                 ABOVE_NORMAL_PRIORITY_CLASS, BELOW_NORMAL_PRIORITY_CLASS,
                 CREATE_BREAKAWAY_FROM_JOB, CREATE_DEFAULT_ERROR_MODE, CREATE_NEW_CONSOLE,
                 CREATE_NEW_PROCESS_GROUP, CREATE_NO_WINDOW, DETACHED_PROCESS,
                 FILE_FLAG_FIRST_PIPE_INSTANCE, FILE_FLAG_OVERLAPPED, FILE_TYPE_CHAR,
                 FILE_TYPE_DISK, FILE_TYPE_PIPE, FILE_TYPE_REMOTE, FILE_TYPE_UNKNOWN,
-                HIGH_PRIORITY_CLASS, IDLE_PRIORITY_CLASS, INFINITE, NORMAL_PRIORITY_CLASS,
+                HIGH_PRIORITY_CLASS, IDLE_PRIORITY_CLASS, NORMAL_PRIORITY_CLASS,
                 PIPE_ACCESS_DUPLEX, PIPE_ACCESS_INBOUND, PIPE_READMODE_MESSAGE, PIPE_TYPE_MESSAGE,
                 PIPE_UNLIMITED_INSTANCES, PIPE_WAIT, REALTIME_PRIORITY_CLASS, STARTF_USESHOWWINDOW,
-                STARTF_USESTDHANDLES, STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
-                WAIT_ABANDONED, WAIT_ABANDONED_0, WAIT_OBJECT_0,
+                STARTF_USESTDHANDLES, WAIT_ABANDONED, WAIT_ABANDONED_0, WAIT_OBJECT_0,
+                PROCESS_DUP_HANDLE,
             },
-            winnt::{
-                DUPLICATE_CLOSE_SOURCE, DUPLICATE_SAME_ACCESS, FILE_GENERIC_READ,
-                FILE_GENERIC_WRITE, GENERIC_READ, GENERIC_WRITE, LOCALE_NAME_MAX_LENGTH,
-                MEM_COMMIT, MEM_FREE, MEM_IMAGE, MEM_MAPPED, MEM_PRIVATE, MEM_RESERVE,
-                PAGE_EXECUTE, PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE, PAGE_EXECUTE_WRITECOPY,
-                PAGE_GUARD, PAGE_NOACCESS, PAGE_NOCACHE, PAGE_READONLY, PAGE_READWRITE,
-                PAGE_WRITECOMBINE, PAGE_WRITECOPY, PROCESS_DUP_HANDLE, SEC_COMMIT, SEC_IMAGE,
-                SEC_LARGE_PAGES, SEC_NOCACHE, SEC_RESERVE, SEC_WRITECOMBINE, SYNCHRONIZE,
+            Console::{
+                STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
             },
-            winuser::SW_HIDE,
+            WindowsProgramming::INFINITE,
+            SystemServices::{
+                LOCALE_NAME_MAX_LENGTH,
+                GENERIC_READ, GENERIC_WRITE,
+            },
         },
+        UI::WindowsAndMessaging::SW_HIDE,
     };
+
+    // #[pyattr]
+    // use winapi::{
+    //     shared::winerror::{
+    //         ERROR_ALREADY_EXISTS, ERROR_BROKEN_PIPE, ERROR_IO_PENDING, ERROR_MORE_DATA,
+    //         ERROR_NETNAME_DELETED, ERROR_NO_DATA, ERROR_NO_SYSTEM_RESOURCES,
+    //         ERROR_OPERATION_ABORTED, ERROR_PIPE_BUSY, ERROR_PIPE_CONNECTED, ERROR_SEM_TIMEOUT,
+    //         WAIT_TIMEOUT,
+    //     },
+    //     um::{
+    //         fileapi::OPEN_EXISTING,
+    //         memoryapi::{
+    //             FILE_MAP_ALL_ACCESS, FILE_MAP_COPY, FILE_MAP_EXECUTE, FILE_MAP_READ, FILE_MAP_WRITE,
+    //         },
+    //         minwinbase::STILL_ACTIVE,
+    //         winbase::{
+    //             ABOVE_NORMAL_PRIORITY_CLASS, BELOW_NORMAL_PRIORITY_CLASS,
+    //             CREATE_BREAKAWAY_FROM_JOB, CREATE_DEFAULT_ERROR_MODE, CREATE_NEW_CONSOLE,
+    //             CREATE_NEW_PROCESS_GROUP, CREATE_NO_WINDOW, DETACHED_PROCESS,
+    //             FILE_FLAG_FIRST_PIPE_INSTANCE, FILE_FLAG_OVERLAPPED, FILE_TYPE_CHAR,
+    //             FILE_TYPE_DISK, FILE_TYPE_PIPE, FILE_TYPE_REMOTE, FILE_TYPE_UNKNOWN,
+    //             HIGH_PRIORITY_CLASS, IDLE_PRIORITY_CLASS, INFINITE, NORMAL_PRIORITY_CLASS,
+    //             PIPE_ACCESS_DUPLEX, PIPE_ACCESS_INBOUND, PIPE_READMODE_MESSAGE, PIPE_TYPE_MESSAGE,
+    //             PIPE_UNLIMITED_INSTANCES, PIPE_WAIT, REALTIME_PRIORITY_CLASS, STARTF_USESHOWWINDOW,
+    //             STARTF_USESTDHANDLES, STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
+    //             WAIT_ABANDONED, WAIT_ABANDONED_0, WAIT_OBJECT_0,
+    //         },
+    //         winnt::{
+    //             DUPLICATE_CLOSE_SOURCE, DUPLICATE_SAME_ACCESS, FILE_GENERIC_READ,
+    //             FILE_GENERIC_WRITE, GENERIC_READ, GENERIC_WRITE, LOCALE_NAME_MAX_LENGTH,
+    //             MEM_COMMIT, MEM_FREE, MEM_IMAGE, MEM_MAPPED, MEM_PRIVATE, MEM_RESERVE,
+    //             PAGE_EXECUTE, PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE, PAGE_EXECUTE_WRITECOPY,
+    //             PAGE_GUARD, PAGE_NOACCESS, PAGE_NOCACHE, PAGE_READONLY, PAGE_READWRITE,
+    //             PAGE_WRITECOMBINE, PAGE_WRITECOPY, PROCESS_DUP_HANDLE, SEC_COMMIT, SEC_IMAGE,
+    //             SEC_LARGE_PAGES, SEC_NOCACHE, SEC_RESERVE, SEC_WRITECOMBINE, SYNCHRONIZE,
+    //         },
+    //         winuser::SW_HIDE,
+    //     },
+    // };
 
     fn GetLastError() -> u32 {
         unsafe { winapi::um::errhandlingapi::GetLastError() }
