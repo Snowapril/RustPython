@@ -11,9 +11,9 @@ mod _winapi {
         PyObjectRef, PyResult, TryFromObject, VirtualMachine,
     };
     use std::ptr::{null, null_mut};
-    use windows::Win32::Foundation;
+    use windows::Win32::Foundation::HANDLE;
     use windows::Win32::Storage::FileSystem;
-    use windows::Win32::System::{Console, Memory, SystemServices, Threading};
+    use windows::Win32::System::{Console, Memory, SystemServices, Threading, Pipes};
     // use winapi::shared::winerror;
     // use winapi::um::{
     //     fileapi, handleapi, namedpipeapi, processenv, processthreadsapi, synchapi, winbase,
@@ -113,7 +113,7 @@ mod _winapi {
 
     impl Convertible for HANDLE {
         fn is_err(&self) -> bool {
-            *self == handleapi::INVALID_HANDLE_VALUE
+            *self == Foundation::INVALID_HANDLE_VALUE
         }
     }
     impl Convertible for i32 {
@@ -132,12 +132,12 @@ mod _winapi {
 
     #[pyfunction]
     fn CloseHandle(handle: usize, vm: &VirtualMachine) -> PyResult<()> {
-        cvt(vm, unsafe { handleapi::CloseHandle(handle as HANDLE) }).map(drop)
+        cvt(vm, unsafe { Foundation::CloseHandle(handle as HANDLE) }).map(drop)
     }
 
     #[pyfunction]
     fn GetStdHandle(std_handle: u32, vm: &VirtualMachine) -> PyResult<usize> {
-        cvt(vm, unsafe { processenv::GetStdHandle(std_handle) }).map(husize)
+        cvt(vm, unsafe { Console::GetStdHandle(std_handle) }).map(husize)
     }
 
     #[pyfunction]
@@ -149,7 +149,7 @@ mod _winapi {
         let mut read = null_mut();
         let mut write = null_mut();
         cvt(vm, unsafe {
-            namedpipeapi::CreatePipe(&mut read, &mut write, null_mut(), size)
+            Pipes::CreatePipe(&mut read, &mut write, null_mut(), size)
         })?;
         Ok((read as usize, write as usize))
     }
@@ -165,7 +165,7 @@ mod _winapi {
     ) -> PyResult<usize> {
         let mut target = null_mut();
         cvt(vm, unsafe {
-            handleapi::DuplicateHandle(
+            Foundation::DuplicateHandle(
                 src_process as _,
                 src as _,
                 target_process as _,
@@ -180,12 +180,12 @@ mod _winapi {
 
     #[pyfunction]
     fn GetCurrentProcess() -> usize {
-        unsafe { processthreadsapi::GetCurrentProcess() as usize }
+        unsafe { Threading::GetCurrentProcess() as usize }
     }
 
     #[pyfunction]
     fn GetFileType(h: usize, vm: &VirtualMachine) -> PyResult<u32> {
-        let ret = unsafe { fileapi::GetFileType(h as _) };
+        let ret = unsafe { FileSystem::GetFileType(h as _) };
         if ret == 0 && GetLastError() != 0 {
             Err(errno_err(vm))
         } else {
@@ -220,7 +220,7 @@ mod _winapi {
         args: CreateProcessArgs,
         vm: &VirtualMachine,
     ) -> PyResult<(usize, usize, u32, u32)> {
-        let mut si = winbase::STARTUPINFOEXW::default();
+        let mut si = Threading::STARTUPINFOEXW::default();
         si.StartupInfo.cb = std::mem::size_of_val(&si) as _;
 
         macro_rules! si_attr {
@@ -278,18 +278,18 @@ mod _winapi {
 
         let procinfo = unsafe {
             let mut procinfo = std::mem::MaybeUninit::uninit();
-            let ret = processthreadsapi::CreateProcessW(
+            let ret = Threading::CreateProcessW(
                 app_name,
                 command_line,
                 null_mut(),
                 null_mut(),
                 args.inherit_handles,
                 args.creation_flags
-                    | winbase::EXTENDED_STARTUPINFO_PRESENT
-                    | winbase::CREATE_UNICODE_ENVIRONMENT,
+                    | Threading::EXTENDED_STARTUPINFO_PRESENT
+                    | Threading::CREATE_UNICODE_ENVIRONMENT,
                 env as _,
                 current_dir,
-                &mut si as *mut winbase::STARTUPINFOEXW as _,
+                &mut si as *mut Threading::STARTUPINFOEXW as _,
                 procinfo.as_mut_ptr(),
             );
             if ret == 0 {
@@ -347,7 +347,7 @@ mod _winapi {
     impl Drop for AttrList {
         fn drop(&mut self) {
             unsafe {
-                processthreadsapi::DeleteProcThreadAttributeList(self.attrlist.as_mut_ptr() as _)
+                Threading::DeleteProcThreadAttributeList(self.attrlist.as_mut_ptr() as _)
             };
         }
     }
@@ -372,7 +372,7 @@ mod _winapi {
                 let attr_count = handlelist.is_some() as u32;
                 let mut size = 0;
                 let ret = unsafe {
-                    processthreadsapi::InitializeProcThreadAttributeList(
+                    Threading::InitializeProcThreadAttributeList(
                         null_mut(),
                         attr_count,
                         0,
@@ -384,7 +384,7 @@ mod _winapi {
                 }
                 let mut attrlist = vec![0u8; size];
                 let ret = unsafe {
-                    processthreadsapi::InitializeProcThreadAttributeList(
+                    Threading::InitializeProcThreadAttributeList(
                         attrlist.as_mut_ptr() as _,
                         attr_count,
                         0,
@@ -400,7 +400,7 @@ mod _winapi {
                 };
                 if let Some(ref mut handlelist) = attrs.handlelist {
                     let ret = unsafe {
-                        processthreadsapi::UpdateProcThreadAttribute(
+                        Threading::UpdateProcThreadAttribute(
                             attrs.attrlist.as_mut_ptr() as _,
                             0,
                             (2 & 0xffff) | 0x20000, // PROC_THREAD_ATTRIBUTE_HANDLE_LIST
@@ -421,8 +421,8 @@ mod _winapi {
 
     #[pyfunction]
     fn WaitForSingleObject(h: usize, ms: u32, vm: &VirtualMachine) -> PyResult<u32> {
-        let ret = unsafe { synchapi::WaitForSingleObject(h as _, ms) };
-        if ret == winbase::WAIT_FAILED {
+        let ret = unsafe { Threading::WaitForSingleObject(h as _, ms) };
+        if ret == Foundation::WAIT_FAILED {
             Err(errno_err(vm))
         } else {
             Ok(ret)
@@ -433,7 +433,7 @@ mod _winapi {
     fn GetExitCodeProcess(h: usize, vm: &VirtualMachine) -> PyResult<u32> {
         let mut ec = 0;
         cvt(vm, unsafe {
-            processthreadsapi::GetExitCodeProcess(h as _, &mut ec)
+            Threading::GetExitCodeProcess(h as _, &mut ec)
         })?;
         Ok(ec)
     }
@@ -441,7 +441,7 @@ mod _winapi {
     #[pyfunction]
     fn TerminateProcess(h: usize, exit_code: u32, vm: &VirtualMachine) -> PyResult<()> {
         cvt(vm, unsafe {
-            processthreadsapi::TerminateProcess(h as _, exit_code)
+            Threading::TerminateProcess(h as _, exit_code)
         })
         .map(drop)
     }
