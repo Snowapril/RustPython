@@ -13,9 +13,7 @@ mod _winapi {
     use std::ptr::{null, null_mut};
     use windows::Win32::Foundation;
     use windows::Win32::Storage::FileSystem;
-    use windows::Win32::System::{
-        Memory, Threading, SystemServices, Console,
-    };
+    use windows::Win32::System::{Console, Memory, SystemServices, Threading};
     // use winapi::shared::winerror;
     // use winapi::um::{
     //     fileapi, handleapi, namedpipeapi, processenv, processthreadsapi, synchapi, winbase,
@@ -25,24 +23,22 @@ mod _winapi {
     #[pyattr]
     use windows::Win32::{
         Foundation::{
-            ERROR_ALREADY_EXISTS, ERROR_BROKEN_PIPE, ERROR_IO_PENDING, ERROR_MORE_DATA,
-            ERROR_NETNAME_DELETED, ERROR_NO_DATA, ERROR_NO_SYSTEM_RESOURCES,
-            ERROR_OPERATION_ABORTED, ERROR_PIPE_BUSY, ERROR_PIPE_CONNECTED, ERROR_SEM_TIMEOUT,
-            WAIT_TIMEOUT, STILL_ACTIVE,
-            DUPLICATE_CLOSE_SOURCE, DUPLICATE_SAME_ACCESS,
+            DUPLICATE_CLOSE_SOURCE, DUPLICATE_SAME_ACCESS, ERROR_ALREADY_EXISTS, ERROR_BROKEN_PIPE,
+            ERROR_IO_PENDING, ERROR_MORE_DATA, ERROR_NETNAME_DELETED, ERROR_NO_DATA,
+            ERROR_NO_SYSTEM_RESOURCES, ERROR_OPERATION_ABORTED, ERROR_PIPE_BUSY,
+            ERROR_PIPE_CONNECTED, ERROR_SEM_TIMEOUT, STILL_ACTIVE, WAIT_TIMEOUT,
         },
-        Storage::FileSystem::{
-            OPEN_EXISTING, SYNCHRONIZE, FILE_GENERIC_WRITE, FILE_GENERIC_READ,
-        },
+        Storage::FileSystem::{FILE_GENERIC_READ, FILE_GENERIC_WRITE, OPEN_EXISTING, SYNCHRONIZE},
         System::{
+            Console::{STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE},
             Memory::{
-                FILE_MAP_ALL_ACCESS, SEC_COMMIT, SEC_IMAGE,
+                FILE_MAP_ALL_ACCESS, MEM_COMMIT, MEM_FREE, MEM_IMAGE, MEM_MAPPED, MEM_PRIVATE,
+                MEM_RESERVE, PAGE_EXECUTE, PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE,
+                PAGE_EXECUTE_WRITECOPY, PAGE_GUARD, PAGE_NOACCESS, PAGE_NOCACHE, PAGE_READONLY,
+                PAGE_READWRITE, PAGE_WRITECOMBINE, PAGE_WRITECOPY, SEC_COMMIT, SEC_IMAGE,
                 SEC_LARGE_PAGES, SEC_NOCACHE, SEC_RESERVE, SEC_WRITECOMBINE,
-                PAGE_EXECUTE, PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE, PAGE_EXECUTE_WRITECOPY,
-                PAGE_GUARD, PAGE_NOACCESS, PAGE_NOCACHE, PAGE_READONLY, PAGE_READWRITE,
-                PAGE_WRITECOMBINE, PAGE_WRITECOPY,
-                MEM_COMMIT, MEM_FREE, MEM_IMAGE, MEM_MAPPED, MEM_PRIVATE, MEM_RESERVE,
             },
+            SystemServices::{GENERIC_READ, GENERIC_WRITE, LOCALE_NAME_MAX_LENGTH},
             Threading::{
                 ABOVE_NORMAL_PRIORITY_CLASS, BELOW_NORMAL_PRIORITY_CLASS,
                 CREATE_BREAKAWAY_FROM_JOB, CREATE_DEFAULT_ERROR_MODE, CREATE_NEW_CONSOLE,
@@ -51,18 +47,11 @@ mod _winapi {
                 FILE_TYPE_DISK, FILE_TYPE_PIPE, FILE_TYPE_REMOTE, FILE_TYPE_UNKNOWN,
                 HIGH_PRIORITY_CLASS, IDLE_PRIORITY_CLASS, NORMAL_PRIORITY_CLASS,
                 PIPE_ACCESS_DUPLEX, PIPE_ACCESS_INBOUND, PIPE_READMODE_MESSAGE, PIPE_TYPE_MESSAGE,
-                PIPE_UNLIMITED_INSTANCES, PIPE_WAIT, REALTIME_PRIORITY_CLASS, STARTF_USESHOWWINDOW,
-                STARTF_USESTDHANDLES, WAIT_ABANDONED, WAIT_ABANDONED_0, WAIT_OBJECT_0,
-                PROCESS_DUP_HANDLE,
-            },
-            Console::{
-                STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
+                PIPE_UNLIMITED_INSTANCES, PIPE_WAIT, PROCESS_DUP_HANDLE, REALTIME_PRIORITY_CLASS,
+                STARTF_USESHOWWINDOW, STARTF_USESTDHANDLES, WAIT_ABANDONED, WAIT_ABANDONED_0,
+                WAIT_OBJECT_0,
             },
             WindowsProgramming::INFINITE,
-            SystemServices::{
-                LOCALE_NAME_MAX_LENGTH,
-                GENERIC_READ, GENERIC_WRITE,
-            },
         },
         UI::WindowsAndMessaging::SW_HIDE,
     };
