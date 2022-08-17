@@ -9,13 +9,13 @@ mod msvcrt {
         PyRef, PyResult, VirtualMachine,
     };
     use itertools::Itertools;
-    use windows::{
+    use winapi::{
         shared::minwindef::UINT,
         um::{handleapi::INVALID_HANDLE_VALUE, winnt::HANDLE},
     };
 
     #[pyattr]
-    use windows::um::winbase::{
+    use winapi::um::winbase::{
         SEM_FAILCRITICALERRORS, SEM_NOALIGNMENTFAULTEXCEPT, SEM_NOGPFAULTERRORBOX,
         SEM_NOOPENFILEERRORBOX,
     };
@@ -112,6 +112,6 @@ mod msvcrt {
     #[allow(non_snake_case)]
     #[pyfunction]
     fn SetErrorMode(mode: UINT, _: &VirtualMachine) -> UINT {
-        unsafe { suppress_iph!(windows::um::errhandlingapi::SetErrorMode(mode)) }
+        unsafe { suppress_iph!(winapi::um::errhandlingapi::SetErrorMode(mode)) }
     }
 }

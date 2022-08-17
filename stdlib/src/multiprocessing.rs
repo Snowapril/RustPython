@@ -4,7 +4,7 @@ pub(crate) use _multiprocessing::make_module;
 #[pymodule]
 mod _multiprocessing {
     use crate::vm::{function::ArgBytesLike, stdlib::os, PyResult, VirtualMachine};
-    use windows::um::winsock2::{self, SOCKET};
+    use winapi::um::winsock2::{self, SOCKET};
 
     #[pyfunction]
     fn closesocket(socket: usize, vm: &VirtualMachine) -> PyResult<()> {

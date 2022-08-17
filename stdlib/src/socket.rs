@@ -34,18 +34,18 @@ mod _socket {
     use libc as c;
     #[cfg(windows)]
     mod c {
-        pub use windows::shared::ifdef::IF_MAX_STRING_SIZE as IF_NAMESIZE;
-        pub use windows::shared::mstcpip::*;
-        pub use windows::shared::netioapi::{if_indextoname, if_nametoindex};
-        pub use windows::shared::ws2def::*;
-        pub use windows::shared::ws2ipdef::*;
-        pub use windows::um::winsock2::{
+        pub use winapi::shared::ifdef::IF_MAX_STRING_SIZE as IF_NAMESIZE;
+        pub use winapi::shared::mstcpip::*;
+        pub use winapi::shared::netioapi::{if_indextoname, if_nametoindex};
+        pub use winapi::shared::ws2def::*;
+        pub use winapi::shared::ws2ipdef::*;
+        pub use winapi::um::winsock2::{
             IPPORT_RESERVED, SD_BOTH as SHUT_RDWR, SD_RECEIVE as SHUT_RD, SD_SEND as SHUT_WR,
             SOCK_DGRAM, SOCK_RAW, SOCK_RDM, SOCK_SEQPACKET, SOCK_STREAM, SOL_SOCKET, SO_BROADCAST,
             SO_ERROR, SO_EXCLUSIVEADDRUSE, SO_LINGER, SO_OOBINLINE, SO_REUSEADDR, SO_TYPE,
             SO_USELOOPBACK, *,
         };
-        pub use windows::um::ws2tcpip::*;
+        pub use winapi::um::ws2tcpip::*;
     }
     // constants
     #[pyattr(name = "has_ipv6")]
@@ -651,7 +651,7 @@ mod _socket {
 
     #[cfg(windows)]
     #[pyattr]
-    use windows::shared::ws2def::{
+    use winapi::shared::ws2def::{
         IPPROTO_CBT, IPPROTO_ICLFXBM, IPPROTO_IGP, IPPROTO_L2TP, IPPROTO_PGM, IPPROTO_RDP,
         IPPROTO_SCTP, IPPROTO_ST,
     };
@@ -719,7 +719,7 @@ mod _socket {
 }
 
     #[cfg(windows)]
-    use windows::shared::netioapi;
+    use winapi::shared::netioapi;
 
     fn get_raw_sock(obj: PyObjectRef, vm: &VirtualMachine) -> PyResult<RawSocket> {
         #[cfg(unix)]
@@ -2090,7 +2090,7 @@ mod _socket {
     #[cfg(all(unix, not(target_os = "redox")))]
     type IfIndex = c::c_uint;
     #[cfg(windows)]
-    type IfIndex = windows::shared::ifdef::NET_IFINDEX;
+    type IfIndex = winapi::shared::ifdef::NET_IFINDEX;
 
     #[cfg(not(target_os = "redox"))]
     #[pyfunction]
@@ -2211,7 +2211,7 @@ mod _socket {
             return Ok(list);
 
             fn get_name(
-                luid: &windows::shared::ifdef::NET_LUID,
+                luid: &winapi::shared::ifdef::NET_LUID,
             ) -> io::Result<widestring::WideCString> {
                 let mut buf = [0; c::IF_NAMESIZE + 1];
                 let ret = unsafe {
@@ -2379,7 +2379,7 @@ mod _socket {
         }
         #[cfg(windows)]
         {
-            windows::um::winsock2::INVALID_SOCKET as RawSocket
+            winapi::um::winsock2::INVALID_SOCKET as RawSocket
         }
     };
 
@@ -2492,7 +2492,7 @@ mod _socket {
         #[cfg(unix)]
         use libc::close;
         #[cfg(windows)]
-        use windows::um::winsock2::closesocket as close;
+        use winapi::um::winsock2::closesocket as close;
         let ret = unsafe { close(x as _) };
         if ret < 0 {
             let err = crate::common::os::errno();

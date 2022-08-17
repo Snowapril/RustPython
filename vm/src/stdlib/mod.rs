@@ -44,7 +44,7 @@ mod pwd;
 pub(crate) mod signal;
 pub mod sys;
 #[cfg(windows)]
-mod windows;
+mod winapi;
 #[cfg(windows)]
 mod winreg;
 
@@ -124,7 +124,7 @@ pub fn get_module_inits() -> StdlibMap {
         {
             "nt" => nt::make_module,
             "msvcrt" => msvcrt::make_module,
-            "_windows" => windows::make_module,
+            "_winapi" => winapi::make_module,
             "winreg" => winreg::make_module,
         }
     }

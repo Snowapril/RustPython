@@ -29,7 +29,7 @@ pub(crate) mod module {
     use crate::builtins::PyDictRef;
     #[cfg(target_env = "msvc")]
     use crate::builtins::PyListRef;
-    use windows::{um, vc::vcruntime::intptr_t};
+    use winapi::{um, vc::vcruntime::intptr_t};
 
     #[pyattr]
     use libc::{O_BINARY, O_TEMPORARY};
@@ -250,7 +250,7 @@ pub(crate) mod module {
     #[pyfunction]
     fn _getfullpathname(path: PyPathLike, vm: &VirtualMachine) -> PyResult {
         let wpath = path.to_widecstring(vm)?;
-        let mut buffer = vec![0u16; windows::shared::minwindef::MAX_PATH];
+        let mut buffer = vec![0u16; winapi::shared::minwindef::MAX_PATH];
         let ret = unsafe {
             um::fileapi::GetFullPathNameW(
                 wpath.as_ptr(),
@@ -283,7 +283,7 @@ pub(crate) mod module {
     #[pyfunction]
     fn _getvolumepathname(path: PyPathLike, vm: &VirtualMachine) -> PyResult {
         let wide = path.to_widecstring(vm)?;
-        let buflen = std::cmp::max(wide.len(), windows::shared::minwindef::MAX_PATH);
+        let buflen = std::cmp::max(wide.len(), winapi::shared::minwindef::MAX_PATH);
         let mut buffer = vec![0u16; buflen];
         let ret = unsafe {
             um::fileapi::GetVolumePathNameW(wide.as_ptr(), buffer.as_mut_ptr(), buflen as _)
@@ -336,7 +336,7 @@ pub(crate) mod module {
     #[pyfunction]
     fn _getdiskusage(path: PyPathLike, vm: &VirtualMachine) -> PyResult<(u64, u64)> {
         use um::fileapi::GetDiskFreeSpaceExW;
-        use windows::shared::{ntdef::ULARGE_INTEGER, winerror};
+        use winapi::shared::{ntdef::ULARGE_INTEGER, winerror};
 
         let wpath = path.to_widecstring(vm)?;
         let mut _free_to_me = ULARGE_INTEGER::default();
@@ -424,6 +424,6 @@ pub fn init_winsock() {
     static WSA_INIT: parking_lot::Once = parking_lot::Once::new();
     WSA_INIT.call_once(|| unsafe {
         let mut wsa_data = std::mem::MaybeUninit::uninit();
-        let _ = windows::um::winsock2::WSAStartup(0x0101, wsa_data.as_mut_ptr());
+        let _ = winapi::um::winsock2::WSAStartup(0x0101, wsa_data.as_mut_ptr());
     })
 }

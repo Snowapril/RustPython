@@ -18,7 +18,7 @@ pub(crate) mod _signal {
 
     cfg_if::cfg_if! {
         if #[cfg(windows)] {
-            use windows::um::winsock2;
+            use winapi::um::winsock2;
             type WakeupFd = libc::SOCKET;
             const INVALID_WAKEUP: WakeupFd = (-1isize) as usize;
             static WAKEUP: atomic::AtomicUsize = atomic::AtomicUsize::new(INVALID_WAKEUP);

@@ -23,7 +23,7 @@ pub fn make_module(vm: &VirtualMachine) -> PyObjectRef {
 pub mod errors {
     pub use libc::*;
     #[cfg(windows)]
-    pub use windows::shared::winerror::*;
+    pub use winapi::shared::winerror::*;
     #[cfg(windows)]
     macro_rules! reexport_wsa {
         ($($errname:ident),*$(,)?) => {
