@@ -11,7 +11,7 @@ mod _winapi {
         PyObjectRef, PyResult, TryFromObject, VirtualMachine,
     };
     use std::ptr::{null, null_mut};
-    use windows::Win32::Foundation::HANDLE;
+    use windows::Win32::Foundation;
     use windows::Win32::Storage::FileSystem;
     use windows::Win32::System::{Console, Memory, Pipes, SystemServices, Threading};
     // use winapi::shared::winerror;
@@ -31,9 +31,7 @@ mod _winapi {
         },
         Storage::FileSystem::{
             FILE_FLAG_FIRST_PIPE_INSTANCE, FILE_FLAG_OVERLAPPED, FILE_GENERIC_READ,
-            FILE_GENERIC_WRITE, FILE_TYPE_CHAR, FILE_TYPE_DISK, FILE_TYPE_PIPE, FILE_TYPE_REMOTE,
-            FILE_TYPE_UNKNOWN, OPEN_EXISTING, PIPE_ACCESS_DUPLEX, PIPE_ACCESS_INBOUND,
-            PIPE_READMODE_MESSAGE, PIPE_TYPE_MESSAGE, PIPE_UNLIMITED_INSTANCES, PIPE_WAIT,
+            FILE_GENERIC_WRITE, OPEN_EXISTING, PIPE_ACCESS_DUPLEX, PIPE_ACCESS_INBOUND,
             SYNCHRONIZE,
         },
         System::{
@@ -45,6 +43,9 @@ mod _winapi {
                 PAGE_READWRITE, PAGE_WRITECOMBINE, PAGE_WRITECOPY, SEC_COMMIT, SEC_IMAGE,
                 SEC_LARGE_PAGES, SEC_NOCACHE, SEC_RESERVE, SEC_WRITECOMBINE,
             },
+            Pipes::{
+                PIPE_READMODE_MESSAGE, PIPE_TYPE_MESSAGE, PIPE_UNLIMITED_INSTANCES, PIPE_WAIT,
+            },
             SystemServices::{GENERIC_READ, GENERIC_WRITE, LOCALE_NAME_MAX_LENGTH},
             Threading::{
                 ABOVE_NORMAL_PRIORITY_CLASS, BELOW_NORMAL_PRIORITY_CLASS,
@@ -53,7 +54,10 @@ mod _winapi {
                 IDLE_PRIORITY_CLASS, NORMAL_PRIORITY_CLASS, PROCESS_DUP_HANDLE,
                 REALTIME_PRIORITY_CLASS, STARTF_USESHOWWINDOW, STARTF_USESTDHANDLES,
             },
-            WindowsProgramming::INFINITE,
+            WindowsProgramming::{
+                FILE_TYPE_CHAR, FILE_TYPE_DISK, FILE_TYPE_PIPE, FILE_TYPE_REMOTE,
+                FILE_TYPE_UNKNOWN, INFINITE,
+            },
         },
         UI::WindowsAndMessaging::SW_HIDE,
     };
@@ -101,7 +105,7 @@ mod _winapi {
         unsafe { winapi::um::errhandlingapi::GetLastError() }
     }
 
-    fn husize(h: HANDLE) -> usize {
+    fn husize(h: Foundation::HANDLE) -> usize {
         h as usize
     }
 
@@ -109,7 +113,7 @@ mod _winapi {
         fn is_err(&self) -> bool;
     }
 
-    impl Convertible for HANDLE {
+    impl Convertible for Foundation::HANDLE {
         fn is_err(&self) -> bool {
             *self == Foundation::INVALID_HANDLE_VALUE
         }
@@ -401,7 +405,7 @@ mod _winapi {
                             0,
                             (2 & 0xffff) | 0x20000, // PROC_THREAD_ATTRIBUTE_HANDLE_LIST
                             handlelist.as_mut_ptr() as _,
-                            (handlelist.len() * std::mem::size_of::<HANDLE>()) as _,
+                            (handlelist.len() * std::mem::size_of::<Foundation::HANDLE>()) as _,
                             null_mut(),
                             null_mut(),
                         )
