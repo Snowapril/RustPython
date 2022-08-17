@@ -13,7 +13,7 @@ mod _winapi {
     use std::ptr::{null, null_mut};
     use windows::Win32::Foundation::HANDLE;
     use windows::Win32::Storage::FileSystem;
-    use windows::Win32::System::{Console, Memory, SystemServices, Threading, Pipes};
+    use windows::Win32::System::{Console, Memory, Pipes, SystemServices, Threading};
     // use winapi::shared::winerror;
     // use winapi::um::{
     //     fileapi, handleapi, namedpipeapi, processenv, processthreadsapi, synchapi, winbase,
@@ -26,16 +26,15 @@ mod _winapi {
             DUPLICATE_CLOSE_SOURCE, DUPLICATE_SAME_ACCESS, ERROR_ALREADY_EXISTS, ERROR_BROKEN_PIPE,
             ERROR_IO_PENDING, ERROR_MORE_DATA, ERROR_NETNAME_DELETED, ERROR_NO_DATA,
             ERROR_NO_SYSTEM_RESOURCES, ERROR_OPERATION_ABORTED, ERROR_PIPE_BUSY,
-            ERROR_PIPE_CONNECTED, ERROR_SEM_TIMEOUT, STILL_ACTIVE, WAIT_TIMEOUT,
-            WAIT_ABANDONED, WAIT_ABANDONED_0, WAIT_OBJECT_0,
+            ERROR_PIPE_CONNECTED, ERROR_SEM_TIMEOUT, STILL_ACTIVE, WAIT_ABANDONED,
+            WAIT_ABANDONED_0, WAIT_OBJECT_0, WAIT_TIMEOUT,
         },
         Storage::FileSystem::{
-            FILE_GENERIC_READ, FILE_GENERIC_WRITE, FILE_FLAG_FIRST_PIPE_INSTANCE,
-            FILE_FLAG_OVERLAPPED, FILE_TYPE_CHAR, FILE_TYPE_DISK, FILE_TYPE_PIPE,
-            FILE_TYPE_REMOTE, FILE_TYPE_UNKNOWN,
-            PIPE_ACCESS_DUPLEX, PIPE_ACCESS_INBOUND, PIPE_READMODE_MESSAGE, PIPE_TYPE_MESSAGE,
-            PIPE_UNLIMITED_INSTANCES, PIPE_WAIT,
-            OPEN_EXISTING, SYNCHRONIZE,
+            FILE_FLAG_FIRST_PIPE_INSTANCE, FILE_FLAG_OVERLAPPED, FILE_GENERIC_READ,
+            FILE_GENERIC_WRITE, FILE_TYPE_CHAR, FILE_TYPE_DISK, FILE_TYPE_PIPE, FILE_TYPE_REMOTE,
+            FILE_TYPE_UNKNOWN, OPEN_EXISTING, PIPE_ACCESS_DUPLEX, PIPE_ACCESS_INBOUND,
+            PIPE_READMODE_MESSAGE, PIPE_TYPE_MESSAGE, PIPE_UNLIMITED_INSTANCES, PIPE_WAIT,
+            SYNCHRONIZE,
         },
         System::{
             Console::{STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE},
@@ -50,10 +49,9 @@ mod _winapi {
             Threading::{
                 ABOVE_NORMAL_PRIORITY_CLASS, BELOW_NORMAL_PRIORITY_CLASS,
                 CREATE_BREAKAWAY_FROM_JOB, CREATE_DEFAULT_ERROR_MODE, CREATE_NEW_CONSOLE,
-                CREATE_NEW_PROCESS_GROUP, CREATE_NO_WINDOW, DETACHED_PROCESS,
-                HIGH_PRIORITY_CLASS, IDLE_PRIORITY_CLASS, NORMAL_PRIORITY_CLASS,
-                PROCESS_DUP_HANDLE, REALTIME_PRIORITY_CLASS,
-                STARTF_USESHOWWINDOW, STARTF_USESTDHANDLES,
+                CREATE_NEW_PROCESS_GROUP, CREATE_NO_WINDOW, DETACHED_PROCESS, HIGH_PRIORITY_CLASS,
+                IDLE_PRIORITY_CLASS, NORMAL_PRIORITY_CLASS, PROCESS_DUP_HANDLE,
+                REALTIME_PRIORITY_CLASS, STARTF_USESHOWWINDOW, STARTF_USESTDHANDLES,
             },
             WindowsProgramming::INFINITE,
         },
@@ -346,9 +344,7 @@ mod _winapi {
     }
     impl Drop for AttrList {
         fn drop(&mut self) {
-            unsafe {
-                Threading::DeleteProcThreadAttributeList(self.attrlist.as_mut_ptr() as _)
-            };
+            unsafe { Threading::DeleteProcThreadAttributeList(self.attrlist.as_mut_ptr() as _) };
         }
     }
 
