@@ -1281,7 +1281,7 @@ pub(super) mod _os {
         let res = unsafe { suppress_iph!(libc::lseek(fd, position, how)) };
         #[cfg(windows)]
         let res = unsafe {
-            use winapi::um::{fileapi, winnt};
+            use windows::um::{fileapi, winnt};
             let handle = Fd(fd).to_raw_handle().map_err(|e| e.into_pyexception(vm))?;
             let mut li = winnt::LARGE_INTEGER::default();
             *li.QuadPart_mut() = position;
@@ -1438,7 +1438,7 @@ pub(super) mod _os {
         #[cfg(windows)]
         {
             use std::{fs::OpenOptions, os::windows::prelude::*};
-            use winapi::{
+            use windows::{
                 shared::minwindef::{DWORD, FILETIME},
                 um::fileapi::SetFileTime,
             };
@@ -1459,7 +1459,7 @@ pub(super) mod _os {
 
             let f = OpenOptions::new()
                 .write(true)
-                .custom_flags(winapi::um::winbase::FILE_FLAG_BACKUP_SEMANTICS)
+                .custom_flags(windows::um::winbase::FILE_FLAG_BACKUP_SEMANTICS)
                 .open(path)
                 .map_err(|err| err.into_pyexception(vm))?;
 
@@ -1495,8 +1495,8 @@ pub(super) mod _os {
     fn times(vm: &VirtualMachine) -> PyResult {
         #[cfg(windows)]
         {
-            use winapi::shared::minwindef::FILETIME;
-            use winapi::um::processthreadsapi::{GetCurrentProcess, GetProcessTimes};
+            use windows::shared::minwindef::FILETIME;
+            use windows::um::processthreadsapi::{GetCurrentProcess, GetProcessTimes};
 
             let mut _create = FILETIME::default();
             let mut _exit = FILETIME::default();
@@ -1677,8 +1677,8 @@ pub(super) mod _os {
                 Ok(Some("UTF-8".to_owned()))
             } else if #[cfg(windows)] {
                 let cp = match fd {
-                    0 => unsafe { winapi::um::consoleapi::GetConsoleCP() },
-                    1 | 2 => unsafe { winapi::um::consoleapi::GetConsoleOutputCP() },
+                    0 => unsafe { windows::um::consoleapi::GetConsoleCP() },
+                    1 | 2 => unsafe { windows::um::consoleapi::GetConsoleOutputCP() },
                     _ => 0,
                 };
 

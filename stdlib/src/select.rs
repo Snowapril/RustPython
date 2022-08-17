@@ -29,7 +29,7 @@ mod platform {
 #[allow(non_snake_case)]
 #[cfg(windows)]
 mod platform {
-    use winapi::um::winsock2;
+    use windows::um::winsock2;
     pub use winsock2::{fd_set, select, timeval, FD_SETSIZE, SOCKET as RawFd};
 
     // based off winsock2.h: https://gist.github.com/piscisaureus/906386#file-winsock2-h-L128-L141
@@ -55,7 +55,7 @@ mod platform {
     }
 
     pub unsafe fn FD_ISSET(fd: RawFd, set: *mut fd_set) -> bool {
-        use winapi::um::winsock2::__WSAFDIsSet;
+        use windows::um::winsock2::__WSAFDIsSet;
         __WSAFDIsSet(fd as _, set) != 0
     }
 

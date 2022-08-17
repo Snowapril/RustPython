@@ -1436,7 +1436,7 @@ mod windows {
     #[pyfunction]
     fn enum_certificates(store_name: PyStrRef, vm: &VirtualMachine) -> PyResult<Vec<PyObjectRef>> {
         use schannel::{cert_context::ValidUses, cert_store::CertStore, RawPointer};
-        use winapi::um::wincrypt;
+        use windows::um::wincrypt;
 
         // TODO: check every store for it, not just 2 of them:
         // https://github.com/python/cpython/blob/3.8/Modules/_ssl.c#L5603-L5610

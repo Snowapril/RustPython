@@ -1,8 +1,8 @@
 #![allow(non_snake_case)]
-pub(crate) use _winapi::make_module;
+pub(crate) use _windows::make_module;
 
 #[pymodule]
-mod _winapi {
+mod _windows {
     use crate::{
         builtins::PyStrRef,
         convert::ToPyException,
@@ -11,14 +11,14 @@ mod _winapi {
         PyObjectRef, PyResult, TryFromObject, VirtualMachine,
     };
     use std::ptr::{null, null_mut};
-    use winapi::shared::winerror;
-    use winapi::um::{
+    use windows::shared::winerror;
+    use windows::um::{
         fileapi, handleapi, namedpipeapi, processenv, processthreadsapi, synchapi, winbase,
         winnt::HANDLE,
     };
 
     #[pyattr]
-    use winapi::{
+    use windows::{
         shared::winerror::{
             ERROR_ALREADY_EXISTS, ERROR_BROKEN_PIPE, ERROR_IO_PENDING, ERROR_MORE_DATA,
             ERROR_NETNAME_DELETED, ERROR_NO_DATA, ERROR_NO_SYSTEM_RESOURCES,
@@ -57,7 +57,7 @@ mod _winapi {
     };
 
     fn GetLastError() -> u32 {
-        unsafe { winapi::um::errhandlingapi::GetLastError() }
+        unsafe { windows::um::errhandlingapi::GetLastError() }
     }
 
     fn husize(h: HANDLE) -> usize {
