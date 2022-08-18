@@ -1,12 +1,11 @@
 #![allow(non_snake_case)]
-use crate::vm::PyObjectRef;
 pub(crate) use _winapi::make_module;
 
 #[pymodule]
 mod _winapi {
     use crate::{
         builtins::PyStrRef,
-        convert::ToPyException,
+        convert::{ToPyException, ToPyObject},
         function::{ArgMapping, ArgSequence, OptionalArg},
         stdlib::os::errno_err,
         PyObjectRef, PyResult, TryFromObject, VirtualMachine,
