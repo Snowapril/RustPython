@@ -177,7 +177,7 @@ mod _winapi {
                 src_process as _,
                 src as _,
                 target_process as _,
-                &mut target,
+                target,
                 access,
                 inherit,
                 Foundation::DUPLICATE_HANDLE_OPTIONS(options.unwrap_or(0)),
@@ -288,7 +288,7 @@ mod _winapi {
             let mut procinfo = std::mem::MaybeUninit::uninit();
             let ret = Threading::CreateProcessW(
                 app_name,
-                command_line,
+                windows::core::PWSTR(command_line),
                 null_mut(),
                 null_mut(),
                 args.inherit_handles,
