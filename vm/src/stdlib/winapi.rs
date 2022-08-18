@@ -269,7 +269,7 @@ mod _winapi {
                     vm,
                     args.startup_info.get_attr(stringify!($attr), vm)?,
                 )?
-                .unwrap_or(Threading::STARTUPINFOW_FLAGS(0))
+                .unwrap_or(0)
             }};
         }
         si_attr!(dwFlags);
@@ -412,7 +412,7 @@ mod _winapi {
                         &mut size,
                     )
                 };
-                if ret != 0 || GetLastError() != Foundation::ERROR_INSUFFICIENT_BUFFER {
+                if ret != 0 || GetLastError() != Foundation::ERROR_INSUFFICIENT_BUFFER.0 {
                     return Err(errno_err(vm));
                 }
                 let mut attrlist = vec![0u8; size];
@@ -457,7 +457,7 @@ mod _winapi {
     #[pyfunction]
     fn WaitForSingleObject(h: usize, ms: u32, vm: &VirtualMachine) -> PyResult<u32> {
         let ret = unsafe { Threading::WaitForSingleObject(h as _, ms) };
-        if ret == Foundation::WAIT_FAILED {
+        if ret == Foundation::WAIT_FAILED.0 {
             Err(errno_err(vm))
         } else {
             Ok(ret)
