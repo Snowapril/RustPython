@@ -139,7 +139,7 @@ mod _winapi {
 
     #[pyfunction]
     fn GetStdHandle(std_handle: u32, vm: &VirtualMachine) -> PyResult<usize> {
-        cvt(vm, unsafe { Console::GetStdHandle(std_handle) }).map(husize)
+        cvt(vm, unsafe { Console::GetStdHandle(Console::STD_HANDLE(std_handle)) }).map(husize)
     }
 
     #[pyfunction]
@@ -151,7 +151,7 @@ mod _winapi {
         let mut read = null_mut();
         let mut write = null_mut();
         cvt(vm, unsafe {
-            Pipes::CreatePipe(&mut read, &mut write, null_mut(), size)
+            Pipes::CreatePipe(read, write, null_mut(), size)
         })?;
         Ok((read as usize, write as usize))
     }
@@ -174,7 +174,7 @@ mod _winapi {
                 &mut target,
                 access,
                 inherit,
-                options.unwrap_or(0),
+                Foundation::DUPLICATE_HANDLE_OPTIONS(options.unwrap_or(0)),
             )
         })?;
         Ok(target as usize)
@@ -187,7 +187,7 @@ mod _winapi {
 
     #[pyfunction]
     fn GetFileType(h: usize, vm: &VirtualMachine) -> PyResult<u32> {
-        let ret = unsafe { FileSystem::GetFileType(h as _) };
+        let ret = unsafe { FileSystem::GetFileType::<P0>(h as _) };
         if ret == 0 && GetLastError() != 0 {
             Err(errno_err(vm))
         } else {
@@ -238,7 +238,7 @@ mod _winapi {
                     vm,
                     args.startup_info.get_attr(stringify!($attr), vm)?,
                 )?
-                .unwrap_or(0)
+                .unwrap_or(Threading::STARTUPINFOW_FLAGS(0))
             }};
         }
         si_attr!(dwFlags);
@@ -348,7 +348,7 @@ mod _winapi {
     }
     impl Drop for AttrList {
         fn drop(&mut self) {
-            unsafe { Threading::DeleteProcThreadAttributeList(self.attrlist.as_mut_ptr() as _) };
+            unsafe { Threading::DeleteProcThreadAttributeList::<P0>(self.attrlist.as_mut_ptr() as _) };
         }
     }
 
@@ -373,7 +373,7 @@ mod _winapi {
                 let mut size = 0;
                 let ret = unsafe {
                     Threading::InitializeProcThreadAttributeList(
-                        null_mut(),
+                        Threading::LPPROC_THREAD_ATTRIBUTE_LIST(null_mut()),
                         attr_count,
                         0,
                         &mut size,
