@@ -1,4 +1,5 @@
 #![allow(non_snake_case)]
+use crate::vm::PyObjectRef;
 pub(crate) use _winapi::make_module;
 
 #[pymodule]
@@ -125,9 +126,8 @@ mod _winapi {
     }
 
     impl ToPyObject for Threading::STARTUPINFOW_FLAGS {
-        fn to_object(&self, py: Python) -> PyObject {
-            let v = *self as u32;
-            v.to_object(py)
+        fn to_pyobject(self, vm: &Virtualmachine) -> PyObjectRef {
+            vm.ctx.new_int(self).into()
         }
     }
 
