@@ -30,7 +30,6 @@ mod _winapi {
     use windows::Win32::System::Threading::STARTUPINFOW_FLAGS;
     use windows::Win32::System::{Console, Pipes, Threading};
     use windows::Win32::UI::WindowsAndMessaging::SHOW_WINDOW_CMD;
-    use windows::Win32::UI::WindowsAndMessaging::SHOW_WINDOW_CMD;
     // use winapi::shared::winerror;
     // use winapi::um::{
     //     fileapi, handleapi, namedpipeapi, processenv, processthreadsapi, synchapi, winbase,
