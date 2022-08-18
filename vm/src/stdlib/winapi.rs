@@ -126,7 +126,7 @@ mod _winapi {
 
     impl ToPyObject for Threading::STARTUPINFOW_FLAGS {
         fn to_pyobject(self, vm: &VirtualMachine) -> PyObjectRef {
-            vm.ctx.new_int(self).into()
+            vm.ctx.new_int(self.0).into()
         }
     }
 
