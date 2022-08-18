@@ -219,7 +219,7 @@ mod _winapi {
     #[pyfunction]
     fn GetFileType(h: usize, vm: &VirtualMachine) -> PyResult<u32> {
         let ret = unsafe { FileSystem::GetFileType::<P0>(h as _) };
-        if ret == 0 && GetLastError() != 0 {
+        if ret.as_bool() == 0 && GetLastError() != 0 {
             Err(errno_err(vm))
         } else {
             Ok(ret)
@@ -325,7 +325,7 @@ mod _winapi {
                 &mut si as *mut Threading::STARTUPINFOEXW as _,
                 procinfo.as_mut_ptr(),
             );
-            if ret == 0 {
+            if ret.as_bool() == 0 {
                 return Err(errno_err(vm));
             }
             procinfo.assume_init()
@@ -412,7 +412,7 @@ mod _winapi {
                         &mut size,
                     )
                 };
-                if ret != 0 || GetLastError() != Foundation::ERROR_INSUFFICIENT_BUFFER.0 {
+                if ret.as_bool() != 0 || GetLastError() != Foundation::ERROR_INSUFFICIENT_BUFFER.0 {
                     return Err(errno_err(vm));
                 }
                 let mut attrlist = vec![0u8; size];
@@ -424,7 +424,7 @@ mod _winapi {
                         &mut size,
                     )
                 };
-                if ret == 0 {
+                if ret.as_bool() == 0 {
                     return Err(errno_err(vm));
                 }
                 let mut attrs = AttrList {
@@ -445,7 +445,7 @@ mod _winapi {
                             null_mut(),
                         )
                     };
-                    if ret == 0 {
+                    if ret.as_bool() == 0 {
                         return Err(errno_err(vm));
                     }
                 }
@@ -457,7 +457,7 @@ mod _winapi {
     #[pyfunction]
     fn WaitForSingleObject(h: usize, ms: u32, vm: &VirtualMachine) -> PyResult<u32> {
         let ret = unsafe { Threading::WaitForSingleObject(h as _, ms) };
-        if ret == Foundation::WAIT_FAILED.0 {
+        if ret.as_bool() == Foundation::WAIT_FAILED.0 {
             Err(errno_err(vm))
         } else {
             Ok(ret)
