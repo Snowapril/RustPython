@@ -105,7 +105,7 @@ mod _winapi {
         unsafe { winapi::um::errhandlingapi::GetLastError() }
     }
 
-    fn husize(h: Foundation::HANDLE) -> usize {
+    fn husize(h: std::os::windows::raw::HANDLE) -> usize {
         h as usize
     }
 
@@ -113,7 +113,7 @@ mod _winapi {
         fn is_err(&self) -> bool;
     }
 
-    impl Convertible for Foundation::HANDLE {
+    impl Convertible for std::os::windows::raw::HANDLE {
         fn is_err(&self) -> bool {
             *self == Foundation::INVALID_HANDLE_VALUE
         }
@@ -134,7 +134,7 @@ mod _winapi {
 
     #[pyfunction]
     fn CloseHandle(handle: usize, vm: &VirtualMachine) -> PyResult<()> {
-        cvt(vm, unsafe { Foundation::CloseHandle(handle as Foundation::HANDLE) }).map(drop)
+        cvt(vm, unsafe { Foundation::CloseHandle(handle as std::os::windows::raw::HANDLE) }).map(drop)
     }
 
     #[pyfunction]
@@ -405,7 +405,7 @@ mod _winapi {
                             0,
                             (2 & 0xffff) | 0x20000, // PROC_THREAD_ATTRIBUTE_HANDLE_LIST
                             handlelist.as_mut_ptr() as _,
-                            (handlelist.len() * std::mem::size_of::<Foundation::HANDLE>()) as _,
+                            (handlelist.len() * std::mem::size_of::<std::os::windows::raw::HANDLE>()) as _,
                             null_mut(),
                             null_mut(),
                         )
