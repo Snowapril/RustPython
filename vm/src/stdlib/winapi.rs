@@ -170,10 +170,7 @@ mod _winapi {
 
     #[pyfunction]
     fn GetStdHandle(std_handle: u32, vm: &VirtualMachine) -> PyResult<usize> {
-        cvt(vm, unsafe {
-            Console::GetStdHandle(STD_HANDLE(std_handle))
-        })
-        .map(husize)
+        cvt(vm, unsafe { Console::GetStdHandle(STD_HANDLE(std_handle)) }).map(husize)
     }
 
     #[pyfunction]
