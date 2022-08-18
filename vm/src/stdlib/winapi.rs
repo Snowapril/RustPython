@@ -78,45 +78,6 @@ mod _winapi {
         UI::WindowsAndMessaging::SW_HIDE,
     };
 
-    // #[pyattr]
-    // use winapi::{
-    //     shared::winerror::{
-    //         ERROR_ALREADY_EXISTS, ERROR_BROKEN_PIPE, ERROR_IO_PENDING, ERROR_MORE_DATA,
-    //         ERROR_NETNAME_DELETED, ERROR_NO_DATA, ERROR_NO_SYSTEM_RESOURCES,
-    //         ERROR_OPERATION_ABORTED, ERROR_PIPE_BUSY, ERROR_PIPE_CONNECTED, ERROR_SEM_TIMEOUT,
-    //         WAIT_TIMEOUT,
-    //     },
-    //     um::{
-    //         fileapi::OPEN_EXISTING,
-    //         memoryapi::{
-    //             FILE_MAP_ALL_ACCESS, FILE_MAP_COPY, FILE_MAP_EXECUTE, FILE_MAP_READ, FILE_MAP_WRITE,
-    //         },
-    //         minwinbase::STILL_ACTIVE,
-    //         winbase::{
-    //             ABOVE_NORMAL_PRIORITY_CLASS, BELOW_NORMAL_PRIORITY_CLASS,
-    //             CREATE_BREAKAWAY_FROM_JOB, CREATE_DEFAULT_ERROR_MODE, CREATE_NEW_CONSOLE,
-    //             CREATE_NEW_PROCESS_GROUP, CREATE_NO_WINDOW, DETACHED_PROCESS,
-    //             FILE_FLAG_FIRST_PIPE_INSTANCE, FILE_FLAG_OVERLAPPED, FILE_TYPE_CHAR,
-    //             FILE_TYPE_DISK, FILE_TYPE_PIPE, FILE_TYPE_REMOTE, FILE_TYPE_UNKNOWN,
-    //             HIGH_PRIORITY_CLASS, IDLE_PRIORITY_CLASS, INFINITE, NORMAL_PRIORITY_CLASS,
-    //             PIPE_ACCESS_DUPLEX, PIPE_ACCESS_INBOUND, PIPE_READMODE_MESSAGE, PIPE_TYPE_MESSAGE,
-    //             PIPE_UNLIMITED_INSTANCES, PIPE_WAIT, REALTIME_PRIORITY_CLASS, STARTF_USESHOWWINDOW,
-    //             STARTF_USESTDHANDLES, STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
-    //             WAIT_ABANDONED, WAIT_ABANDONED_0, WAIT_OBJECT_0,
-    //         },
-    //         winnt::{
-    //             DUPLICATE_CLOSE_SOURCE, DUPLICATE_SAME_ACCESS, FILE_GENERIC_READ,
-    //             FILE_GENERIC_WRITE, GENERIC_READ, GENERIC_WRITE, LOCALE_NAME_MAX_LENGTH,
-    //             MEM_COMMIT, MEM_FREE, MEM_IMAGE, MEM_MAPPED, MEM_PRIVATE, MEM_RESERVE,
-    //             PAGE_EXECUTE, PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE, PAGE_EXECUTE_WRITECOPY,
-    //             PAGE_GUARD, PAGE_NOACCESS, PAGE_NOCACHE, PAGE_READONLY, PAGE_READWRITE,
-    //             PAGE_WRITECOMBINE, PAGE_WRITECOPY, PROCESS_DUP_HANDLE, SEC_COMMIT, SEC_IMAGE,
-    //             SEC_LARGE_PAGES, SEC_NOCACHE, SEC_RESERVE, SEC_WRITECOMBINE, SYNCHRONIZE,
-    //         },
-    //         winuser::SW_HIDE,
-    //     },
-    // };
-
     fn GetLastError() -> u32 {
         unsafe { winapi::um::errhandlingapi::GetLastError() }
     }
@@ -139,6 +100,11 @@ mod _winapi {
             *self == 0
         }
     }
+    impl Convertible for BOOL {
+        fn is_err(&self) -> bool {
+            *self == 0
+        }
+    }
 
     macro_rules! impl_into_pyobject_int {
         ($($t:ty)*) => {$(
@@ -151,6 +117,14 @@ mod _winapi {
     }
 
     impl_into_pyobject_int!(STARTUPINFOW_FLAGS SHOW_WINDOW_CMD DUPLICATE_HANDLE_OPTIONS WIN32_ERROR NTSTATUS FILE_FLAGS_AND_ATTRIBUTES FILE_ACCESS_FLAGS FILE_CREATION_DISPOSITION STD_HANDLE FILE_MAP VIRTUAL_ALLOCATION_TYPE PAGE_TYPE PAGE_PROTECTION_FLAGS NAMED_PIPE_MODE PROCESS_CREATION_FLAGS PROCESS_ACCESS_RIGHTS);
+
+    impl TryFromBorrowedObject for STARTUPINFOW_FLAGS {
+        fn try_from_borrowed_object(vm: &VirtualMachine, obj: &PyObject) -> PyResult<Self> {
+            obj.try_value_with(|int: &PyInt| {
+                int.try_to_primitive(vm)
+            }, vm)
+        }
+    }
 
     fn cvt<T: Convertible>(vm: &VirtualMachine, res: T) -> PyResult<T> {
         if res.is_err() {
