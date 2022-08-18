@@ -134,12 +134,18 @@ mod _winapi {
 
     #[pyfunction]
     fn CloseHandle(handle: usize, vm: &VirtualMachine) -> PyResult<()> {
-        cvt(vm, unsafe { Foundation::CloseHandle(handle as std::os::windows::raw::HANDLE) }).map(drop)
+        cvt(vm, unsafe {
+            Foundation::CloseHandle(handle as std::os::windows::raw::HANDLE)
+        })
+        .map(drop)
     }
 
     #[pyfunction]
     fn GetStdHandle(std_handle: u32, vm: &VirtualMachine) -> PyResult<usize> {
-        cvt(vm, unsafe { Console::GetStdHandle(Console::STD_HANDLE(std_handle)) }).map(husize)
+        cvt(vm, unsafe {
+            Console::GetStdHandle(Console::STD_HANDLE(std_handle))
+        })
+        .map(husize)
     }
 
     #[pyfunction]
@@ -348,7 +354,9 @@ mod _winapi {
     }
     impl Drop for AttrList {
         fn drop(&mut self) {
-            unsafe { Threading::DeleteProcThreadAttributeList::<P0>(self.attrlist.as_mut_ptr() as _) };
+            unsafe {
+                Threading::DeleteProcThreadAttributeList::<P0>(self.attrlist.as_mut_ptr() as _)
+            };
         }
     }
 
@@ -405,7 +413,9 @@ mod _winapi {
                             0,
                             (2 & 0xffff) | 0x20000, // PROC_THREAD_ATTRIBUTE_HANDLE_LIST
                             handlelist.as_mut_ptr() as _,
-                            (handlelist.len() * std::mem::size_of::<std::os::windows::raw::HANDLE>()) as _,
+                            (handlelist.len()
+                                * std::mem::size_of::<std::os::windows::raw::HANDLE>())
+                                as _,
                             null_mut(),
                             null_mut(),
                         )
