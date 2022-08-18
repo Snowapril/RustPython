@@ -144,7 +144,7 @@ mod _winapi {
         ($($t:ty)*) => {$(
             impl ToPyObject for $t {
                 fn to_pyobject(self, vm: &VirtualMachine) -> PyObjectRef {
-                    vm.ctx.new_int(self).into()
+                    vm.ctx.new_int(self.0).into()
                 }
             }
         )*};
