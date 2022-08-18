@@ -192,7 +192,7 @@ mod _winapi {
 
     #[pyfunction]
     fn GetFileType(h: usize, vm: &VirtualMachine) -> PyResult<u32> {
-        let ret = unsafe { FileSystem::GetFileType::<P0>(h as _) };
+        let ret = unsafe { FileSystem::GetFileType(h as _) };
         if ret == 0 && GetLastError() != 0 {
             Err(errno_err(vm))
         } else {
@@ -354,7 +354,7 @@ mod _winapi {
     impl Drop for AttrList {
         fn drop(&mut self) {
             unsafe {
-                Threading::DeleteProcThreadAttributeList::<P0>(self.attrlist.as_mut_ptr() as _)
+                Threading::DeleteProcThreadAttributeList(self.attrlist.as_mut_ptr() as _)
             };
         }
     }
