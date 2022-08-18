@@ -13,7 +13,7 @@ mod _winapi {
     use std::ptr::{null, null_mut};
     use windows::Win32::Foundation;
     use windows::Win32::Storage::FileSystem;
-    use windows::Win32::System::{Console, Memory, Pipes, SystemServices, Threading};
+    use windows::Win32::System::{Console, Pipes, Threading};
     // use winapi::shared::winerror;
     // use winapi::um::{
     //     fileapi, handleapi, namedpipeapi, processenv, processthreadsapi, synchapi, winbase,
@@ -134,7 +134,7 @@ mod _winapi {
 
     #[pyfunction]
     fn CloseHandle(handle: usize, vm: &VirtualMachine) -> PyResult<()> {
-        cvt(vm, unsafe { Foundation::CloseHandle(handle as HANDLE) }).map(drop)
+        cvt(vm, unsafe { Foundation::CloseHandle(handle as Foundation::HANDLE) }).map(drop)
     }
 
     #[pyfunction]
@@ -379,7 +379,7 @@ mod _winapi {
                         &mut size,
                     )
                 };
-                if ret != 0 || GetLastError() != winerror::ERROR_INSUFFICIENT_BUFFER {
+                if ret != 0 || GetLastError() != Foundation::ERROR_INSUFFICIENT_BUFFER {
                     return Err(errno_err(vm));
                 }
                 let mut attrlist = vec![0u8; size];
