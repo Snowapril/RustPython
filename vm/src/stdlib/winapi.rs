@@ -12,8 +12,25 @@ mod _winapi {
     };
     use std::ptr::{null, null_mut};
     use windows::Win32::Foundation;
+    use windows::Win32::Foundation::DUPLICATE_HANDLE_OPTIONS;
+    use windows::Win32::Foundation::NTSTATUS;
+    use windows::Win32::Foundation::WIN32_ERROR;
     use windows::Win32::Storage::FileSystem;
+    use windows::Win32::Storage::FileSystem::FILE_ACCESS_FLAGS;
+    use windows::Win32::Storage::FileSystem::FILE_CREATION_DISPOSITION;
+    use windows::Win32::Storage::FileSystem::FILE_FLAGS_AND_ATTRIBUTES;
+    use windows::Win32::System::Console::STD_HANDLE;
+    use windows::Win32::System::Memory::FILE_MAP;
+    use windows::Win32::System::Memory::PAGE_PROTECTION_FLAGS;
+    use windows::Win32::System::Memory::PAGE_TYPE;
+    use windows::Win32::System::Memory::VIRTUAL_ALLOCATION_TYPE;
+    use windows::Win32::System::Pipes::NAMED_PIPE_MODE;
+    use windows::Win32::System::Threading::PROCESS_ACCESS_RIGHTS;
+    use windows::Win32::System::Threading::PROCESS_CREATION_FLAGS;
+    use windows::Win32::System::Threading::STARTUPINFOW_FLAGS;
     use windows::Win32::System::{Console, Pipes, Threading};
+    use windows::Win32::UI::WindowsAndMessaging::SHOW_WINDOW_CMD;
+    use windows::Win32::UI::WindowsAndMessaging::SHOW_WINDOW_CMD;
     // use winapi::shared::winerror;
     // use winapi::um::{
     //     fileapi, handleapi, namedpipeapi, processenv, processthreadsapi, synchapi, winbase,
