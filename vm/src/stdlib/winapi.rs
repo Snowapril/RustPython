@@ -113,7 +113,7 @@ mod _winapi {
         fn is_err(&self) -> bool;
     }
 
-    impl Convertible for std::os::windows::raw::HANDLE {
+    impl Convertible for Foundation::HANDLE {
         fn is_err(&self) -> bool {
             *self == Foundation::INVALID_HANDLE_VALUE
         }
@@ -121,6 +121,13 @@ mod _winapi {
     impl Convertible for i32 {
         fn is_err(&self) -> bool {
             *self == 0
+        }
+    }
+
+    impl ToPyObject for Threading::STARTUPINFOW_FLAGS {
+        fn to_object(&self, py: Python) -> PyObject {
+            let v = *self as u32;
+            v.to_object(py)
         }
     }
 
