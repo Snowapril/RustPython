@@ -124,11 +124,17 @@ mod _winapi {
         }
     }
 
-    impl ToPyObject for Threading::STARTUPINFOW_FLAGS {
-        fn to_pyobject(self, vm: &VirtualMachine) -> PyObjectRef {
-            vm.ctx.new_int(self.0).into()
-        }
+    macro_rules! impl_into_pyobject_int {
+        ($($t:ty)*) => {$(
+            impl ToPyObject for $t {
+                fn to_pyobject(self, vm: &VirtualMachine) -> PyObjectRef {
+                    vm.ctx.new_int(self).into()
+                }
+            }
+        )*};
     }
+
+    impl_into_pyobject_int!(STARTUPINFOW_FLAGS SHOW_WINDOW_CMD DUPLICATE_HANDLE_OPTIONS WIN32_ERROR NTSTATUS FILE_FLAGS_AND_ATTRIBUTES FILE_ACCESS_FLAGS FILE_CREATION_DISPOSITION STD_HANDLE FILE_MAP VIRTUAL_ALLOCATION_TYPE PAGE_TYPE PAGE_PROTECTION_FLAGS NAMED_PIPE_MODE PROCESS_CREATION_FLAGS PROCESS_ACCESS_RIGHTS SHOW_WINDOW_CMD);
 
     fn cvt<T: Convertible>(vm: &VirtualMachine, res: T) -> PyResult<T> {
         if res.is_err() {
