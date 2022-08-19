@@ -171,7 +171,7 @@ mod _winapi {
     ) -> PyResult<usize> {
         let mut target = null_mut();
         cvt(vm, unsafe {
-            Foundation::DuplicateHandle(
+            Foundation::DuplicateHandle::<HANDLE, HANDLE, HANDLE, BOOL>(
                 src_process as _,
                 src as _,
                 target_process as _,
@@ -232,11 +232,13 @@ mod _winapi {
 
         macro_rules! si_attr {
             ($attr:ident, $t:ty) => {{
-                si.StartupInfo.$attr = Threading::HANDLE(<Option<$t>>::try_from_object(
-                    vm,
-                    args.startup_info.get_attr(stringify!($attr), vm)?,
-                )?
-                .unwrap_or(0) as _)
+                si.StartupInfo.$attr = Foundation::HANDLE(
+                    <Option<$t>>::try_from_object(
+                        vm,
+                        args.startup_info.get_attr(stringify!($attr), vm)?,
+                    )?
+                    .unwrap_or(0) as _,
+                )
             }};
             ($attr:ident) => {{
                 si.StartupInfo.$attr = <Option<_>>::try_from_object(
@@ -411,8 +413,12 @@ mod _winapi {
                 };
                 if let Some(ref mut handlelist) = attrs.handlelist {
                     let ret = unsafe {
-                        Threading::UpdateProcThreadAttribute::<Threading::LPPROC_THREAD_ATTRIBUTE_LIST>(
-                            Threading::LPPROC_THREAD_ATTRIBUTE_LIST(attrs.attrlist.as_mut_ptr() as _),
+                        Threading::UpdateProcThreadAttribute::<
+                            Threading::LPPROC_THREAD_ATTRIBUTE_LIST,
+                        >(
+                            Threading::LPPROC_THREAD_ATTRIBUTE_LIST(
+                                attrs.attrlist.as_mut_ptr() as _
+                            ),
                             0,
                             (2 & 0xffff) | 0x20000, // PROC_THREAD_ATTRIBUTE_HANDLE_LIST
                             handlelist.as_mut_ptr() as _,
