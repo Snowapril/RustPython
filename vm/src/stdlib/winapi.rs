@@ -186,12 +186,12 @@ mod _winapi {
 
     #[pyfunction]
     fn GetCurrentProcess() -> usize {
-        unsafe { Threading::GetCurrentProcess() as usize }
+        unsafe { Threading::GetCurrentProcess().0 as usize }
     }
 
     #[pyfunction]
     fn GetFileType(h: usize, vm: &VirtualMachine) -> PyResult<u32> {
-        let ret = unsafe { FileSystem::GetFileType::<Foundation::HANDLE>(h as _) };
+        let ret = unsafe { FileSystem::GetFileType::<Foundation::HANDLE>(Foundation::HANDLE(h as _)) };
         if ret == 0 && GetLastError() != 0 {
             Err(errno_err(vm))
         } else {
@@ -356,7 +356,7 @@ mod _winapi {
         fn drop(&mut self) {
             unsafe {
                 Threading::DeleteProcThreadAttributeList::<Threading::LPPROC_THREAD_ATTRIBUTE_LIST>(
-                    self.attrlist.as_mut_ptr() as _,
+                    Threading::LPPROC_THREAD_ATTRIBUTE_LIST(self.attrlist.as_mut_ptr() as _),
                 )
             };
         }
@@ -395,7 +395,7 @@ mod _winapi {
                 let mut attrlist = vec![0u8; size];
                 let ret = unsafe {
                     Threading::InitializeProcThreadAttributeList(
-                        attrlist.as_mut_ptr() as _,
+                        Threading::LPPROC_THREAD_ATTRIBUTE_LIST(attrlist.as_mut_ptr() as _),
                         attr_count,
                         0,
                         &mut size,
@@ -433,7 +433,7 @@ mod _winapi {
 
     #[pyfunction]
     fn WaitForSingleObject(h: usize, ms: u32, vm: &VirtualMachine) -> PyResult<u32> {
-        let ret = unsafe { Threading::WaitForSingleObject::<Foundation::HANDLE>(h as _, ms) };
+        let ret = unsafe { Threading::WaitForSingleObject::<Foundation::HANDLE>(Foundation::HANDLE(h as _), ms) };
         if ret == Foundation::WAIT_FAILED.0 {
             Err(errno_err(vm))
         } else {
@@ -445,7 +445,7 @@ mod _winapi {
     fn GetExitCodeProcess(h: usize, vm: &VirtualMachine) -> PyResult<u32> {
         let mut ec = 0;
         cvt(vm, unsafe {
-            Threading::GetExitCodeProcess::<Foundation::HANDLE>(h as _, &mut ec)
+            Threading::GetExitCodeProcess::<Foundation::HANDLE>(Foundation::HANDLE(h as _), &mut ec)
         })?;
         Ok(ec)
     }
@@ -453,7 +453,7 @@ mod _winapi {
     #[pyfunction]
     fn TerminateProcess(h: usize, exit_code: u32, vm: &VirtualMachine) -> PyResult<()> {
         cvt(vm, unsafe {
-            Threading::TerminateProcess::<Foundation::HANDLE>(h as _, exit_code)
+            Threading::TerminateProcess::<Foundation::HANDLE>(Foundation::HANDLE(h as _), exit_code)
         })
         .map(drop)
     }
