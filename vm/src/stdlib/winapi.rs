@@ -191,7 +191,8 @@ mod _winapi {
 
     #[pyfunction]
     fn GetFileType(h: usize, vm: &VirtualMachine) -> PyResult<u32> {
-        let ret = unsafe { FileSystem::GetFileType::<Foundation::HANDLE>(Foundation::HANDLE(h as _)) };
+        let ret =
+            unsafe { FileSystem::GetFileType::<Foundation::HANDLE>(Foundation::HANDLE(h as _)) };
         if ret == 0 && GetLastError() != 0 {
             Err(errno_err(vm))
         } else {
@@ -231,18 +232,18 @@ mod _winapi {
 
         macro_rules! si_attr {
             ($attr:ident, $t:ty) => {{
-                si.StartupInfo.$attr = <Option<$t>>::try_from_object(
+                si.StartupInfo.$attr = Threading::HANDLE(<Option<$t>>::try_from_object(
                     vm,
                     args.startup_info.get_attr(stringify!($attr), vm)?,
                 )?
-                .unwrap_or(0) as _
+                .unwrap_or(0) as _)
             }};
             ($attr:ident) => {{
                 si.StartupInfo.$attr = <Option<_>>::try_from_object(
                     vm,
                     args.startup_info.get_attr(stringify!($attr), vm)?,
                 )?
-                .unwrap_or(STARTUPINFOW_FLAGS(0))
+                .unwrap_or(0)
             }};
         }
         si_attr!(dwFlags);
@@ -410,7 +411,7 @@ mod _winapi {
                 };
                 if let Some(ref mut handlelist) = attrs.handlelist {
                     let ret = unsafe {
-                        Threading::UpdateProcThreadAttribute(
+                        Threading::UpdateProcThreadAttribute::<Threading::LPPROC_THREAD_ATTRIBUTE_LIST>(
                             attrs.attrlist.as_mut_ptr() as _,
                             0,
                             (2 & 0xffff) | 0x20000, // PROC_THREAD_ATTRIBUTE_HANDLE_LIST
@@ -433,7 +434,9 @@ mod _winapi {
 
     #[pyfunction]
     fn WaitForSingleObject(h: usize, ms: u32, vm: &VirtualMachine) -> PyResult<u32> {
-        let ret = unsafe { Threading::WaitForSingleObject::<Foundation::HANDLE>(Foundation::HANDLE(h as _), ms) };
+        let ret = unsafe {
+            Threading::WaitForSingleObject::<Foundation::HANDLE>(Foundation::HANDLE(h as _), ms)
+        };
         if ret == Foundation::WAIT_FAILED.0 {
             Err(errno_err(vm))
         } else {
