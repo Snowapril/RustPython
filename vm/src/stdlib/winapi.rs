@@ -136,7 +136,7 @@ mod _winapi {
     #[pyfunction]
     fn CloseHandle(handle: usize, vm: &VirtualMachine) -> PyResult<()> {
         cvt(vm, unsafe {
-            Foundation::CloseHandle(handle as Foundation::HANDLE)
+            Foundation::CloseHandle(Foundation::HANDLE(handle))
         })
         .map(drop)
     }
@@ -191,7 +191,7 @@ mod _winapi {
 
     #[pyfunction]
     fn GetFileType(h: usize, vm: &VirtualMachine) -> PyResult<u32> {
-        let ret = unsafe { FileSystem::GetFileType::<HANDLE>(h as _) };
+        let ret = unsafe { FileSystem::GetFileType::<Foundation::HANDLE>(h as _) };
         if ret == 0 && GetLastError() != 0 {
             Err(errno_err(vm))
         } else {
@@ -307,8 +307,8 @@ mod _winapi {
         };
 
         Ok((
-            procinfo.hProcess as usize,
-            procinfo.hThread as usize,
+            procinfo.hProcess.0 as usize,
+            procinfo.hThread.0 as usize,
             procinfo.dwProcessId,
             procinfo.dwThreadId,
         ))
@@ -433,7 +433,7 @@ mod _winapi {
 
     #[pyfunction]
     fn WaitForSingleObject(h: usize, ms: u32, vm: &VirtualMachine) -> PyResult<u32> {
-        let ret = unsafe { Threading::WaitForSingleObject::<HANDLE>(h as _, ms) };
+        let ret = unsafe { Threading::WaitForSingleObject::<Foundation::HANDLE>(h as _, ms) };
         if ret == Foundation::WAIT_FAILED.0 {
             Err(errno_err(vm))
         } else {
@@ -445,7 +445,7 @@ mod _winapi {
     fn GetExitCodeProcess(h: usize, vm: &VirtualMachine) -> PyResult<u32> {
         let mut ec = 0;
         cvt(vm, unsafe {
-            Threading::GetExitCodeProcess::<HANDLE>(h as _, &mut ec)
+            Threading::GetExitCodeProcess::<Foundation::HANDLE>(h as _, &mut ec)
         })?;
         Ok(ec)
     }
@@ -453,7 +453,7 @@ mod _winapi {
     #[pyfunction]
     fn TerminateProcess(h: usize, exit_code: u32, vm: &VirtualMachine) -> PyResult<()> {
         cvt(vm, unsafe {
-            Threading::TerminateProcess::<HANDLE>(h as _, exit_code)
+            Threading::TerminateProcess::<Foundation::HANDLE>(h as _, exit_code)
         })
         .map(drop)
     }
