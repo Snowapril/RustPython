@@ -177,7 +177,7 @@ mod _winapi {
                 target_process as _,
                 target,
                 access,
-                inherit,
+                BOOL(inherit),
                 Foundation::DUPLICATE_HANDLE_OPTIONS(options.unwrap_or(0)),
             )
         })?;
@@ -288,16 +288,16 @@ mod _winapi {
         let procinfo = unsafe {
             let mut procinfo = std::mem::MaybeUninit::uninit();
             let ret = Threading::CreateProcessW(
-                app_name,
+                windows::core::PCWSTR(app_name),
                 windows::core::PWSTR(command_line),
                 null_mut(),
                 null_mut(),
-                args.inherit_handles,
+                BOOL(args.inherit_handles),
                 args.creation_flags
                     | Threading::EXTENDED_STARTUPINFO_PRESENT
                     | Threading::CREATE_UNICODE_ENVIRONMENT,
                 env as _,
-                current_dir,
+                windows::core::PCWSTR(current_dir),
                 &mut si as *mut Threading::STARTUPINFOEXW as _,
                 procinfo.as_mut_ptr(),
             );
@@ -412,7 +412,7 @@ mod _winapi {
                 if let Some(ref mut handlelist) = attrs.handlelist {
                     let ret = unsafe {
                         Threading::UpdateProcThreadAttribute::<Threading::LPPROC_THREAD_ATTRIBUTE_LIST>(
-                            attrs.attrlist.as_mut_ptr() as _,
+                            Threading::LPPROC_THREAD_ATTRIBUTE_LIST(attrs.attrlist.as_mut_ptr() as _),
                             0,
                             (2 & 0xffff) | 0x20000, // PROC_THREAD_ATTRIBUTE_HANDLE_LIST
                             handlelist.as_mut_ptr() as _,
