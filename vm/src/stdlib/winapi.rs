@@ -4,17 +4,18 @@ pub(crate) use _winapi::make_module;
 #[pymodule]
 mod _winapi {
     use crate::{
-        builtins::PyStrRef,
+        builtins::PyStrRef, PyInt,
         convert::{ToPyException, ToPyObject},
         function::{ArgMapping, ArgSequence, OptionalArg},
         stdlib::os::errno_err,
-        PyObjectRef, PyResult, TryFromObject, VirtualMachine,
+        PyObjectRef, PyResult, TryFromObject, VirtualMachine, TryFromBorrowedObject,
     };
     use std::ptr::{null, null_mut};
     use windows::Win32::Foundation;
     use windows::Win32::Foundation::DUPLICATE_HANDLE_OPTIONS;
     use windows::Win32::Foundation::NTSTATUS;
     use windows::Win32::Foundation::WIN32_ERROR;
+    use windows::Win32::Foundation::BOOL;
     use windows::Win32::Storage::FileSystem;
     use windows::Win32::Storage::FileSystem::FILE_ACCESS_FLAGS;
     use windows::Win32::Storage::FileSystem::FILE_CREATION_DISPOSITION;
