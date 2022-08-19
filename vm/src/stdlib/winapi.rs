@@ -4,18 +4,18 @@ pub(crate) use _winapi::make_module;
 #[pymodule]
 mod _winapi {
     use crate::{
-        builtins::{PyStrRef, PyInt},
+        builtins::{PyInt, PyStrRef},
         convert::{ToPyException, ToPyObject},
         function::{ArgMapping, ArgSequence, OptionalArg},
         stdlib::os::errno_err,
-        PyObjectRef, PyResult, TryFromObject, VirtualMachine, TryFromBorrowedObject, PyObject,
+        PyObject, PyObjectRef, PyResult, TryFromBorrowedObject, TryFromObject, VirtualMachine,
     };
     use std::ptr::{null, null_mut};
     use windows::Win32::Foundation;
+    use windows::Win32::Foundation::BOOL;
     use windows::Win32::Foundation::DUPLICATE_HANDLE_OPTIONS;
     use windows::Win32::Foundation::NTSTATUS;
     use windows::Win32::Foundation::WIN32_ERROR;
-    use windows::Win32::Foundation::BOOL;
     use windows::Win32::Storage::FileSystem;
     use windows::Win32::Storage::FileSystem::FILE_ACCESS_FLAGS;
     use windows::Win32::Storage::FileSystem::FILE_CREATION_DISPOSITION;
@@ -121,9 +121,7 @@ mod _winapi {
 
     impl TryFromBorrowedObject for STARTUPINFOW_FLAGS {
         fn try_from_borrowed_object(vm: &VirtualMachine, obj: &PyObject) -> PyResult<Self> {
-            obj.try_value_with(|int: &PyInt| {
-                int.try_to_primitive(vm)
-            }, vm)
+            obj.try_value_with(|int: &PyInt| int.try_to_primitive(vm), vm)
         }
     }
 
