@@ -4,18 +4,18 @@ pub(crate) use _winapi::make_module;
 #[pymodule]
 mod _winapi {
     use crate::{
-        builtins::{PyInt, PyStrRef},
+        builtins::{PyStrRef, PyInt},
         convert::{ToPyException, ToPyObject},
         function::{ArgMapping, ArgSequence, OptionalArg},
         stdlib::os::errno_err,
-        PyObject, PyObjectRef, PyResult, TryFromBorrowedObject, TryFromObject, VirtualMachine,
+        PyObjectRef, PyResult, TryFromObject, VirtualMachine, TryFromBorrowedObject, PyObject,
     };
     use std::ptr::{null, null_mut};
     use windows::Win32::Foundation;
-    use windows::Win32::Foundation::BOOL;
     use windows::Win32::Foundation::DUPLICATE_HANDLE_OPTIONS;
     use windows::Win32::Foundation::NTSTATUS;
     use windows::Win32::Foundation::WIN32_ERROR;
+    use windows::Win32::Foundation::BOOL;
     use windows::Win32::Storage::FileSystem;
     use windows::Win32::Storage::FileSystem::FILE_ACCESS_FLAGS;
     use windows::Win32::Storage::FileSystem::FILE_CREATION_DISPOSITION;
@@ -83,8 +83,8 @@ mod _winapi {
         unsafe { winapi::um::errhandlingapi::GetLastError() }
     }
 
-    fn husize(h: std::os::windows::raw::HANDLE) -> usize {
-        h as usize
+    fn husize(h: Foundation::HANDLE) -> usize {
+        h.0 as usize
     }
 
     trait Convertible {
@@ -103,7 +103,7 @@ mod _winapi {
     }
     impl Convertible for BOOL {
         fn is_err(&self) -> bool {
-            !*self
+            !*self.as_bool()
         }
     }
 
@@ -121,7 +121,9 @@ mod _winapi {
 
     impl TryFromBorrowedObject for STARTUPINFOW_FLAGS {
         fn try_from_borrowed_object(vm: &VirtualMachine, obj: &PyObject) -> PyResult<Self> {
-            obj.try_value_with(|int: &PyInt| int.try_to_primitive(vm), vm)
+            obj.try_value_with(|int: &PyInt| {
+                int.try_to_primitive(vm)
+            }, vm)
         }
     }
 
@@ -191,7 +193,7 @@ mod _winapi {
 
     #[pyfunction]
     fn GetFileType(h: usize, vm: &VirtualMachine) -> PyResult<u32> {
-        let ret = unsafe { FileSystem::GetFileType::<_>(h as _) };
+        let ret = unsafe { FileSystem::GetFileType::<>(h as _) };
         if ret == 0 && GetLastError() != 0 {
             Err(errno_err(vm))
         } else {
@@ -259,9 +261,9 @@ mod _winapi {
 
         let mut attrlist =
             getattributelist(args.startup_info.get_attr("lpAttributeList", vm)?, vm)?;
-        si.lpAttributeList = attrlist
+        si.lpAttributeList = Threading::LPPROC_THREAD_ATTRIBUTE_LIST(attrlist
             .as_mut()
-            .map_or_else(null_mut, |l| l.attrlist.as_mut_ptr() as _);
+            .map_or_else(null_mut, |l| l.attrlist.as_mut_ptr() as _));
 
         let wstr = |s: PyStrRef| {
             let ws = widestring::WideCString::from_str(s.as_str())
@@ -353,7 +355,7 @@ mod _winapi {
     impl Drop for AttrList {
         fn drop(&mut self) {
             unsafe {
-                Threading::DeleteProcThreadAttributeList::<_>(self.attrlist.as_mut_ptr() as _)
+                Threading::DeleteProcThreadAttributeList(self.attrlist.as_mut_ptr() as _)
             };
         }
     }
@@ -429,7 +431,7 @@ mod _winapi {
 
     #[pyfunction]
     fn WaitForSingleObject(h: usize, ms: u32, vm: &VirtualMachine) -> PyResult<u32> {
-        let ret = unsafe { Threading::WaitForSingleObject::<_>(h as _, ms) };
+        let ret = unsafe { Threading::WaitForSingleObject(h as _, ms) };
         if ret == Foundation::WAIT_FAILED.0 {
             Err(errno_err(vm))
         } else {
@@ -441,7 +443,7 @@ mod _winapi {
     fn GetExitCodeProcess(h: usize, vm: &VirtualMachine) -> PyResult<u32> {
         let mut ec = 0;
         cvt(vm, unsafe {
-            Threading::GetExitCodeProcess::<_>(h as _, &mut ec)
+            Threading::GetExitCodeProcess(h as _, &mut ec)
         })?;
         Ok(ec)
     }
@@ -449,7 +451,7 @@ mod _winapi {
     #[pyfunction]
     fn TerminateProcess(h: usize, exit_code: u32, vm: &VirtualMachine) -> PyResult<()> {
         cvt(vm, unsafe {
-            Threading::TerminateProcess::<_>(h as _, exit_code)
+            Threading::TerminateProcess::<HANDLE>(h as _, exit_code)
         })
         .map(drop)
     }
