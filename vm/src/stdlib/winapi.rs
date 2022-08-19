@@ -136,7 +136,7 @@ mod _winapi {
     #[pyfunction]
     fn CloseHandle(handle: usize, vm: &VirtualMachine) -> PyResult<()> {
         cvt(vm, unsafe {
-            Foundation::CloseHandle(Foundation::HANDLE(handle))
+            Foundation::CloseHandle(Foundation::HANDLE(handle as isize))
         })
         .map(drop)
     }
