@@ -8,7 +8,7 @@ mod _winapi {
         convert::{ToPyException, ToPyObject},
         function::{ArgMapping, ArgSequence, OptionalArg},
         stdlib::os::errno_err,
-        PyObjectRef, PyResult, TryFromObject, VirtualMachine, TryFromBorrowedObject,
+        PyObjectRef, PyResult, TryFromObject, VirtualMachine, TryFromBorrowedObject, PyObject,
     };
     use std::ptr::{null, null_mut};
     use windows::Win32::Foundation;
