@@ -103,7 +103,7 @@ mod _winapi {
     }
     impl Convertible for BOOL {
         fn is_err(&self) -> bool {
-            !*self.as_bool()
+            *self.not().as_bool()
         }
     }
 
@@ -172,9 +172,9 @@ mod _winapi {
         let mut target = null_mut();
         cvt(vm, unsafe {
             Foundation::DuplicateHandle::<Foundation::HANDLE, Foundation::HANDLE, Foundation::HANDLE, BOOL>(
-                src_process as _,
-                src as _,
-                target_process as _,
+                HANDLE(src_process as _),
+                HANDLE(src as _),
+                HANDLE(target_process as _),
                 target,
                 access,
                 BOOL(inherit),
