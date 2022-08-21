@@ -143,7 +143,7 @@ mod _winapi {
 
     #[pyfunction]
     fn GetStdHandle(std_handle: u32, vm: &VirtualMachine) -> PyResult<usize> {
-        cvt(vm, unsafe { Console::GetStdHandle(STD_HANDLE(std_handle)) }).map(husize)
+        cvt(vm, Console::GetStdHandle(STD_HANDLE(std_handle))).map(husize)
     }
 
     #[pyfunction]
@@ -171,7 +171,7 @@ mod _winapi {
     ) -> PyResult<usize> {
         let mut target = null_mut();
         cvt(vm, unsafe {
-            Foundation::DuplicateHandle::<HANDLE, HANDLE, HANDLE, BOOL>(
+            Foundation::DuplicateHandle::<Foundation::HANDLE, Foundation::HANDLE, Foundation::HANDLE, BOOL>(
                 src_process as _,
                 src as _,
                 target_process as _,
