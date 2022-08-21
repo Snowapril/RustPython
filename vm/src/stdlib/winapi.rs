@@ -172,9 +172,9 @@ mod _winapi {
         let mut target = null_mut();
         cvt(vm, unsafe {
             Foundation::DuplicateHandle::<Foundation::HANDLE, Foundation::HANDLE, Foundation::HANDLE, BOOL>(
-                HANDLE(src_process as _),
-                HANDLE(src as _),
-                HANDLE(target_process as _),
+                Foundation::HANDLE(src_process as _),
+                Foundation::HANDLE(src as _),
+                Foundation::HANDLE(target_process as _),
                 target,
                 access,
                 BOOL(inherit),
