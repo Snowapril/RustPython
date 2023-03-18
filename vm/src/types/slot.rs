@@ -123,18 +123,6 @@ pub struct PyNumberSlots {
     pub int: AtomicCell<Option<PyNumberUnaryFunc<PyRef<PyInt>>>>,
     pub float: AtomicCell<Option<PyNumberUnaryFunc<PyRef<PyFloat>>>>,
 
-    pub right_add: AtomicCell<Option<PyNumberBinaryFunc>>,
-    pub right_subtract: AtomicCell<Option<PyNumberBinaryFunc>>,
-    pub right_multiply: AtomicCell<Option<PyNumberBinaryFunc>>,
-    pub right_remainder: AtomicCell<Option<PyNumberBinaryFunc>>,
-    pub right_divmod: AtomicCell<Option<PyNumberBinaryFunc>>,
-    pub right_power: AtomicCell<Option<PyNumberBinaryFunc>>,
-    pub right_lshift: AtomicCell<Option<PyNumberBinaryFunc>>,
-    pub right_rshift: AtomicCell<Option<PyNumberBinaryFunc>>,
-    pub right_and: AtomicCell<Option<PyNumberBinaryFunc>>,
-    pub right_xor: AtomicCell<Option<PyNumberBinaryFunc>>,
-    pub right_or: AtomicCell<Option<PyNumberBinaryFunc>>,
-
     pub inplace_add: AtomicCell<Option<PyNumberBinaryFunc>>,
     pub inplace_subtract: AtomicCell<Option<PyNumberBinaryFunc>>,
     pub inplace_multiply: AtomicCell<Option<PyNumberBinaryFunc>>,
@@ -148,23 +136,17 @@ pub struct PyNumberSlots {
 
     pub floor_divide: AtomicCell<Option<PyNumberBinaryFunc>>,
     pub true_divide: AtomicCell<Option<PyNumberBinaryFunc>>,
-    pub right_floor_divide: AtomicCell<Option<PyNumberBinaryFunc>>,
-    pub right_true_divide: AtomicCell<Option<PyNumberBinaryFunc>>,
     pub inplace_floor_divide: AtomicCell<Option<PyNumberBinaryFunc>>,
     pub inplace_true_divide: AtomicCell<Option<PyNumberBinaryFunc>>,
 
     pub index: AtomicCell<Option<PyNumberUnaryFunc<PyRef<PyInt>>>>,
 
     pub matrix_multiply: AtomicCell<Option<PyNumberBinaryFunc>>,
-    pub right_matrix_multiply: AtomicCell<Option<PyNumberBinaryFunc>>,
     pub inplace_matrix_multiply: AtomicCell<Option<PyNumberBinaryFunc>>,
 }
 
 impl PyNumberSlots {
-    pub fn left_binary_op(
-        &self,
-        op_slot: PyNumberBinaryOp,
-    ) -> PyResult<Option<PyNumberBinaryFunc>> {
+    pub fn binary_op(&self, op_slot: PyNumberBinaryOp) -> PyResult<Option<PyNumberBinaryFunc>> {
         use PyNumberBinaryOp::*;
         let binary_op = match op_slot {
             Add => self.add.load(),
@@ -194,31 +176,6 @@ impl PyNumberSlots {
             InplaceTrueDivide => self.inplace_true_divide.load(),
             MatrixMultiply => self.matrix_multiply.load(),
             InplaceMatrixMultiply => self.inplace_matrix_multiply.load(),
-        };
-        Ok(binary_op)
-    }
-
-    pub fn right_binary_op(
-        &self,
-        op_slot: PyNumberBinaryOp,
-    ) -> PyResult<Option<PyNumberBinaryFunc>> {
-        use PyNumberBinaryOp::*;
-        let binary_op = match op_slot {
-            Add => self.right_add.load(),
-            Subtract => self.right_subtract.load(),
-            Multiply => self.right_multiply.load(),
-            Remainder => self.right_remainder.load(),
-            Divmod => self.right_divmod.load(),
-            Power => self.right_power.load(),
-            Lshift => self.right_lshift.load(),
-            Rshift => self.right_rshift.load(),
-            And => self.right_and.load(),
-            Xor => self.right_xor.load(),
-            Or => self.right_or.load(),
-            FloorDivide => self.right_floor_divide.load(),
-            TrueDivide => self.right_true_divide.load(),
-            MatrixMultiply => self.right_matrix_multiply.load(),
-            _ => None,
         };
         Ok(binary_op)
     }
@@ -343,6 +300,18 @@ macro_rules! number_binary_op_wrapper {
                 num.obj.to_owned(),
                 identifier!(vm, $name),
                 (other.to_owned(),),
+            )
+        }
+    };
+}
+
+macro_rules! number_binary_op_wrapper_right {
+    ($name:ident) => {
+        |num, other, vm| {
+            vm.call_special_method(
+                other.to_owned(),
+                identifier!(vm, $name),
+                (num.obj.to_owned(),),
             )
         }
     };
@@ -628,7 +597,7 @@ impl PyType {
                 toggle_subslot!(number, add, number_binary_op_wrapper!(__add__));
             }
             _ if name == identifier!(ctx, __radd__) => {
-                toggle_subslot!(number, right_add, number_binary_op_wrapper!(__radd__));
+                toggle_subslot!(number, add, number_binary_op_wrapper_right!(__radd__));
             }
             _ if name == identifier!(ctx, __iadd__) => {
                 toggle_subslot!(number, inplace_add, number_binary_op_wrapper!(__iadd__));
@@ -637,7 +606,7 @@ impl PyType {
                 toggle_subslot!(number, subtract, number_binary_op_wrapper!(__sub__));
             }
             _ if name == identifier!(ctx, __rsub__) => {
-                toggle_subslot!(number, right_subtract, number_binary_op_wrapper!(__rsub__));
+                toggle_subslot!(number, subtract, number_binary_op_wrapper_right!(__rsub__));
             }
             _ if name == identifier!(ctx, __isub__) => {
                 toggle_subslot!(
@@ -650,7 +619,7 @@ impl PyType {
                 toggle_subslot!(number, multiply, number_binary_op_wrapper!(__mul__));
             }
             _ if name == identifier!(ctx, __rmul__) => {
-                toggle_subslot!(number, right_multiply, number_binary_op_wrapper!(__rmul__));
+                toggle_subslot!(number, multiply, number_binary_op_wrapper_right!(__rmul__));
             }
             _ if name == identifier!(ctx, __imul__) => {
                 toggle_subslot!(
@@ -663,7 +632,7 @@ impl PyType {
                 toggle_subslot!(number, remainder, number_binary_op_wrapper!(__mod__));
             }
             _ if name == identifier!(ctx, __rmod__) => {
-                toggle_subslot!(number, right_remainder, number_binary_op_wrapper!(__rmod__));
+                toggle_subslot!(number, remainder, number_binary_op_wrapper_right!(__rmod__));
             }
             _ if name == identifier!(ctx, __imod__) => {
                 toggle_subslot!(
@@ -676,13 +645,13 @@ impl PyType {
                 toggle_subslot!(number, divmod, number_binary_op_wrapper!(__divmod__));
             }
             _ if name == identifier!(ctx, __rdivmod__) => {
-                toggle_subslot!(number, right_divmod, number_binary_op_wrapper!(__rdivmod__));
+                toggle_subslot!(number, divmod, number_binary_op_wrapper_right!(__rdivmod__));
             }
             _ if name == identifier!(ctx, __pow__) => {
                 toggle_subslot!(number, power, number_binary_op_wrapper!(__pow__));
             }
             _ if name == identifier!(ctx, __rpow__) => {
-                toggle_subslot!(number, right_power, number_binary_op_wrapper!(__rpow__));
+                toggle_subslot!(number, power, number_binary_op_wrapper_right!(__rpow__));
             }
             _ if name == identifier!(ctx, __ipow__) => {
                 toggle_subslot!(number, inplace_power, number_binary_op_wrapper!(__ipow__));
@@ -691,7 +660,7 @@ impl PyType {
                 toggle_subslot!(number, lshift, number_binary_op_wrapper!(__lshift__));
             }
             _ if name == identifier!(ctx, __rlshift__) => {
-                toggle_subslot!(number, right_lshift, number_binary_op_wrapper!(__rlshift__));
+                toggle_subslot!(number, lshift, number_binary_op_wrapper_right!(__rlshift__));
             }
             _ if name == identifier!(ctx, __ilshift__) => {
                 toggle_subslot!(
@@ -704,7 +673,7 @@ impl PyType {
                 toggle_subslot!(number, rshift, number_binary_op_wrapper!(__rshift__));
             }
             _ if name == identifier!(ctx, __rrshift__) => {
-                toggle_subslot!(number, right_rshift, number_binary_op_wrapper!(__rrshift__));
+                toggle_subslot!(number, rshift, number_binary_op_wrapper_right!(__rrshift__));
             }
             _ if name == identifier!(ctx, __irshift__) => {
                 toggle_subslot!(
@@ -717,7 +686,7 @@ impl PyType {
                 toggle_subslot!(number, and, number_binary_op_wrapper!(__and__));
             }
             _ if name == identifier!(ctx, __rand__) => {
-                toggle_subslot!(number, right_and, number_binary_op_wrapper!(__rand__));
+                toggle_subslot!(number, and, number_binary_op_wrapper_right!(__rand__));
             }
             _ if name == identifier!(ctx, __iand__) => {
                 toggle_subslot!(number, inplace_and, number_binary_op_wrapper!(__iand__));
@@ -726,7 +695,7 @@ impl PyType {
                 toggle_subslot!(number, xor, number_binary_op_wrapper!(__xor__));
             }
             _ if name == identifier!(ctx, __rxor__) => {
-                toggle_subslot!(number, right_xor, number_binary_op_wrapper!(__rxor__));
+                toggle_subslot!(number, xor, number_binary_op_wrapper_right!(__rxor__));
             }
             _ if name == identifier!(ctx, __ixor__) => {
                 toggle_subslot!(number, inplace_xor, number_binary_op_wrapper!(__ixor__));
@@ -735,7 +704,7 @@ impl PyType {
                 toggle_subslot!(number, or, number_binary_op_wrapper!(__or__));
             }
             _ if name == identifier!(ctx, __ror__) => {
-                toggle_subslot!(number, right_or, number_binary_op_wrapper!(__ror__));
+                toggle_subslot!(number, or, number_binary_op_wrapper_right!(__ror__));
             }
             _ if name == identifier!(ctx, __ior__) => {
                 toggle_subslot!(number, inplace_or, number_binary_op_wrapper!(__ior__));
@@ -750,8 +719,8 @@ impl PyType {
             _ if name == identifier!(ctx, __rfloordiv__) => {
                 toggle_subslot!(
                     number,
-                    right_floor_divide,
-                    number_binary_op_wrapper!(__rfloordiv__)
+                    floor_divide,
+                    number_binary_op_wrapper_right!(__rfloordiv__)
                 );
             }
             _ if name == identifier!(ctx, __ifloordiv__) => {
@@ -767,8 +736,8 @@ impl PyType {
             _ if name == identifier!(ctx, __rtruediv__) => {
                 toggle_subslot!(
                     number,
-                    right_true_divide,
-                    number_binary_op_wrapper!(__rtruediv__)
+                    true_divide,
+                    number_binary_op_wrapper_right!(__rtruediv__)
                 );
             }
             _ if name == identifier!(ctx, __itruediv__) => {
@@ -788,8 +757,8 @@ impl PyType {
             _ if name == identifier!(ctx, __rmatmul__) => {
                 toggle_subslot!(
                     number,
-                    right_matrix_multiply,
-                    number_binary_op_wrapper!(__rmatmul__)
+                    matrix_multiply,
+                    number_binary_op_wrapper_right!(__rmatmul__)
                 );
             }
             _ if name == identifier!(ctx, __imatmul__) => {
@@ -1277,18 +1246,6 @@ pub trait AsSequence: PyPayload {
 }
 
 macro_rules! extend_number_slot {
-    ($slots:ident, $methods:ident, $method:ident, $right_method:ident, $op_slot:ident) => {
-        if $methods.$method.is_some() {
-            $slots.number.$method.store($methods.$method);
-            $slots.number.$right_method.store(Some(|num, other, vm| {
-                num.methods.binary_op(PyNumberBinaryOp::$op_slot).unwrap()(
-                    other.to_number(),
-                    num.obj,
-                    vm,
-                )
-            }));
-        }
-    };
     ($slots:ident, $methods:ident, $method:ident) => {
         if $methods.$method.is_some() {
             $slots.number.$method.store($methods.$method);
@@ -1323,32 +1280,20 @@ pub trait AsNumber: PyPayload {
     fn extend_slots(slots: &mut PyTypeSlots) {
         let methods = Self::as_number();
 
-        extend_number_slot!(slots, methods, add, right_add, Add);
-        extend_number_slot!(slots, methods, subtract, right_subtract, Subtract);
-        extend_number_slot!(slots, methods, multiply, right_multiply, Multiply);
-        extend_number_slot!(slots, methods, remainder, right_remainder, Remainder);
-        extend_number_slot!(slots, methods, divmod, right_divmod, Divmod);
-        extend_number_slot!(slots, methods, power, right_power, Power);
-        extend_number_slot!(slots, methods, lshift, right_lshift, Lshift);
-        extend_number_slot!(slots, methods, rshift, right_rshift, Rshift);
-        extend_number_slot!(slots, methods, and, right_and, And);
-        extend_number_slot!(slots, methods, xor, right_xor, Xor);
-        extend_number_slot!(slots, methods, or, right_or, Or);
-        extend_number_slot!(
-            slots,
-            methods,
-            floor_divide,
-            right_floor_divide,
-            FloorDivide
-        );
-        extend_number_slot!(slots, methods, true_divide, right_true_divide, TrueDivide);
-        extend_number_slot!(
-            slots,
-            methods,
-            matrix_multiply,
-            right_matrix_multiply,
-            MatrixMultiply
-        );
+        extend_number_slot!(slots, methods, add);
+        extend_number_slot!(slots, methods, subtract);
+        extend_number_slot!(slots, methods, multiply);
+        extend_number_slot!(slots, methods, remainder);
+        extend_number_slot!(slots, methods, divmod);
+        extend_number_slot!(slots, methods, power);
+        extend_number_slot!(slots, methods, lshift);
+        extend_number_slot!(slots, methods, rshift);
+        extend_number_slot!(slots, methods, and);
+        extend_number_slot!(slots, methods, xor);
+        extend_number_slot!(slots, methods, or);
+        extend_number_slot!(slots, methods, floor_divide);
+        extend_number_slot!(slots, methods, true_divide);
+        extend_number_slot!(slots, methods, matrix_multiply);
 
         extend_number_slot!(slots, methods, negative);
         extend_number_slot!(slots, methods, positive);
