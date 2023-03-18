@@ -1,7 +1,5 @@
 use crate::{
-    builtins::{
-        int, type_::PointerSlot, PyByteArray, PyBytes, PyComplex, PyFloat, PyInt, PyIntRef, PyStr,
-    },
+    builtins::{int, PyByteArray, PyBytes, PyComplex, PyFloat, PyInt, PyIntRef, PyStr},
     function::ArgBytesLike,
     stdlib::warnings,
     AsObject, PyObject, PyObjectRef, PyPayload, PyRef, PyResult, TryFromBorrowedObject,
@@ -262,25 +260,15 @@ pub enum PyNumberBinaryOp {
 #[derive(Copy, Clone)]
 pub struct PyNumber<'a> {
     pub obj: &'a PyObject,
-    pub(crate) methods: &'a PyNumberMethods,
 }
 
 impl<'a> From<&'a PyObject> for PyNumber<'a> {
     fn from(obj: &'a PyObject) -> Self {
-        static GLOBAL_NOT_IMPLEMENTED: PyNumberMethods = PyNumberMethods::NOT_IMPLEMENTED;
-        Self {
-            obj,
-            methods: Self::find_methods(obj)
-                .map_or(&GLOBAL_NOT_IMPLEMENTED, |m| unsafe { m.borrow_static() }),
-        }
+        Self { obj }
     }
 }
 
 impl PyNumber<'_> {
-    fn find_methods(obj: &PyObject) -> Option<PointerSlot<PyNumberMethods>> {
-        obj.class().mro_find_map(|x| x.slots.as_number.load())
-    }
-
     // PyNumber_Check
     pub fn check(obj: &PyObject) -> bool {
         let methods = &obj.class().slots.number;
