@@ -153,6 +153,8 @@ class BuiltinTest(unittest.TestCase):
         it = pickle.loads(d)
         self.assertEqual(list(it), seq[1:])
 
+    # TODO: RUSTPYTHON
+    @unittest.expectedFailure
     def test_import(self):
         __import__('sys')
         __import__('time')
@@ -399,6 +401,8 @@ class BuiltinTest(unittest.TestCase):
                                 msg=f"source={source} mode={mode}")
 
 
+    # TODO: RUSTPYTHON
+    @unittest.expectedFailure
     @unittest.skipIf(
         support.is_emscripten or support.is_wasi,
         "socket.accept is broken"
@@ -500,7 +504,6 @@ class BuiltinTest(unittest.TestCase):
         finally:
             asyncio.set_event_loop_policy(policy)
 
-
     # TODO: RUSTPYTHON
     @unittest.expectedFailure
     def test_compile_async_generator(self):
@@ -519,6 +522,8 @@ class BuiltinTest(unittest.TestCase):
         exec(co, glob)
         self.assertEqual(type(glob['ticker']()), AsyncGeneratorType)
 
+    # TODO: RUSTPYTHON
+    @unittest.expectedFailure
     def test_delattr(self):
         sys.spam = 1
         delattr(sys, 'spam')
@@ -527,6 +532,8 @@ class BuiltinTest(unittest.TestCase):
         msg = r"^attribute name must be string, not 'int'$"
         self.assertRaisesRegex(TypeError, msg, delattr, sys, 1)
 
+    # TODO: RUSTPYTHON
+    @unittest.expectedFailure
     def test_dir(self):
         # dir(wrong number of arguments)
         self.assertRaises(TypeError, dir, 42, 42)
@@ -749,6 +756,8 @@ class BuiltinTest(unittest.TestCase):
         self.assertRaises(TypeError,
                           exec, code, {'__builtins__': 123})
 
+    # TODO: RUSTPYTHON
+    @unittest.expectedFailure
     def test_exec_globals_frozen(self):
         class frozendict_error(Exception):
             pass
@@ -781,6 +790,8 @@ class BuiltinTest(unittest.TestCase):
         self.assertRaises(frozendict_error,
                           exec, code, namespace)
 
+    # TODO: RUSTPYTHON
+    @unittest.expectedFailure
     def test_exec_globals_error_on_get(self):
         # custom `globals` or `builtins` can raise errors on item access
         class setonlyerror(Exception):
@@ -800,6 +811,8 @@ class BuiltinTest(unittest.TestCase):
         self.assertRaises(setonlyerror, exec, code,
                           {'__builtins__': setonlydict({'superglobal': 1})})
 
+    # TODO: RUSTPYTHON
+    @unittest.expectedFailure
     def test_exec_globals_dict_subclass(self):
         class customdict(dict):  # this one should not do anything fancy
             pass
@@ -822,6 +835,8 @@ class BuiltinTest(unittest.TestCase):
         finally:
             sys.stdout = savestdout
 
+    # TODO: RUSTPYTHON
+    @unittest.expectedFailure
     def test_exec_closure(self):
         def function_without_closures():
             return 3 * 5
@@ -931,6 +946,7 @@ class BuiltinTest(unittest.TestCase):
             f2 = filter(filter_char, "abcdeabcde")
             self.check_iter_pickle(f1, list(f2), proto)
 
+    @unittest.skip("TODO: RUSTPYTHON, segentation fault")
     def test_filter_dealloc(self):
         # Tests recursive deallocation of nested filter objects using the
         # thrashcan mechanism. See gh-102356 for more details.
@@ -941,6 +957,8 @@ class BuiltinTest(unittest.TestCase):
         del i
         gc.collect()
 
+    # TODO: RUSTPYTHON
+    @unittest.expectedFailure
     def test_getattr(self):
         self.assertTrue(getattr(sys, 'stdout') is sys.stdout)
         self.assertRaises(TypeError, getattr)
@@ -952,6 +970,8 @@ class BuiltinTest(unittest.TestCase):
         # unicode surrogates are not encodable to the default encoding (utf8)
         self.assertRaises(AttributeError, getattr, 1, "\uDAD1\uD51E")
 
+    # TODO: RUSTPYTHON
+    @unittest.expectedFailure
     def test_hasattr(self):
         self.assertTrue(hasattr(sys, 'stdout'))
         self.assertRaises(TypeError, hasattr)
@@ -1330,8 +1350,6 @@ class BuiltinTest(unittest.TestCase):
         self.assertRaises(ValueError, open, 'a\x00b')
         self.assertRaises(ValueError, open, b'a\x00b')
 
-    # TODO: RUSTPYTHON
-    @unittest.expectedFailure
     @unittest.skipIf(sys.flags.utf8_mode, "utf-8 mode is enabled")
     def test_open_default_encoding(self):
         old_environ = dict(os.environ)
@@ -1603,6 +1621,8 @@ class BuiltinTest(unittest.TestCase):
             self.assertEqual(round(x, None), round(x))
             self.assertEqual(type(round(x, None)), type(round(x)))
 
+    # TODO: RUSTPYTHON
+    @unittest.expectedFailure
     def test_setattr(self):
         setattr(sys, 'spam', 1)
         self.assertEqual(sys.spam, 1)
@@ -2323,7 +2343,6 @@ class TestSorted(unittest.TestCase):
 
 
 class ShutdownTest(unittest.TestCase):
-
     # TODO: RUSTPYTHON
     @unittest.expectedFailure
     def test_cleanup(self):
@@ -2397,6 +2416,8 @@ class TestType(unittest.TestCase):
         with self.assertRaises(TypeError):
             type('a', (), dict={})
 
+    # TODO: RUSTPYTHON
+    @unittest.expectedFailure
     def test_type_name(self):
         for name in 'A', '\xc4', '\U0001f40d', 'B.A', '42', '':
             with self.subTest(name=name):
@@ -2430,6 +2451,8 @@ class TestType(unittest.TestCase):
             A.__name__ = b'A'
         self.assertEqual(A.__name__, 'C')
 
+    # TODO: RUSTPYTHON
+    @unittest.expectedFailure
     def test_type_qualname(self):
         A = type('A', (), {'__qualname__': 'B.C'})
         self.assertEqual(A.__name__, 'A')
@@ -2510,7 +2533,8 @@ class TestType(unittest.TestCase):
         with self.assertRaises(TypeError):
             type('A', (B,), {'__slots__': '__weakref__'})
 
-    @unittest.skip("TODO: RUSTPYTHON; random failure")
+    # TODO: RUSTPYTHON
+    @unittest.expectedFailure
     def test_namespace_order(self):
         # bpo-34320: namespace should preserve order
         od = collections.OrderedDict([('a', 1), ('b', 2)])

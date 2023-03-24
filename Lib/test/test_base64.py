@@ -232,8 +232,6 @@ class BaseXYTestCase(unittest.TestCase):
         self.assertRaises(binascii.Error, base64.b64decode, b'abc')
         self.assertRaises(binascii.Error, base64.b64decode, 'abc')
 
-    # TODO: RUSTPYTHON
-    @unittest.expectedFailure
     def test_b64decode_invalid_chars(self):
         # issue 1466065: Test some invalid characters.
         tests = ((b'%3d==', b'\xdd'),

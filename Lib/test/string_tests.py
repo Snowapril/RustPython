@@ -56,6 +56,7 @@ class BaseTest:
     def test_fixtype(self):
         self.assertIs(type(self.fixtype("123")), self.type2test)
 
+    
     # check that obj.method(*args) returns result
     def checkequal(self, result, obj, methodname, *args, **kwargs):
         result = self.fixtype(result)
@@ -394,8 +395,7 @@ class BaseTest:
 
         self.checkraises(TypeError, 'hello', 'expandtabs', 42, 42)
         # This test is only valid when sizeof(int) == sizeof(void*) == 4.
-        # XXX RUSTPYTHON TODO: expandtabs overflow checks
-        if sys.maxsize < (1 << 32) and struct.calcsize('P') == 4 and False:
+        if sys.maxsize < (1 << 32) and struct.calcsize('P') == 4:
             self.checkraises(OverflowError,
                              '\ta\n\tb', 'expandtabs', sys.maxsize)
 
@@ -724,7 +724,6 @@ class BaseTest:
         self.checkraises(TypeError, 'hello', 'replace', 42, 'h')
         self.checkraises(TypeError, 'hello', 'replace', 'h', 42)
 
-    @unittest.skip("TODO: RUSTPYTHON, may only apply to 32-bit platforms")
     @unittest.skipIf(sys.maxsize > (1 << 32) or struct.calcsize('P') != 4,
                      'only applies to 32-bit platforms')
     def test_replace_overflow(self):
@@ -1063,8 +1062,6 @@ class CommonTest(BaseTest):
             hash(b)
         self.assertEqual(hash(a), hash(b))
 
-    # TODO: RUSTPYTHON
-    @unittest.expectedFailure
     def test_capitalize_nonascii(self):
         # check that titlecased chars are lowered correctly
         # \u1ffc is the titlecased char
@@ -1449,8 +1446,6 @@ class MixinStrUnicodeUserStringTest:
         self.checkequal(True, s, 'startswith', 'h', None, -2)
         self.checkequal(False, s, 'startswith', 'x', None, None)
 
-    # TODO: RUSTPYTHON
-    @unittest.expectedFailure
     def test_find_etc_raise_correct_error_messages(self):
         # issue 11828
         s = 'hello'

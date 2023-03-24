@@ -29,6 +29,7 @@ from collections.abc import ByteString
 
 
 class TestUserObjects(unittest.TestCase):
+    
     def _superset_test(self, a, b):
         self.assertGreaterEqual(
             set(dir(a)),
@@ -696,6 +697,8 @@ class TestNamedTuple(unittest.TestCase):
                 self.assertEqual(np.x, 1)
                 self.assertEqual(np.y, 2)
 
+    # TODO: RUSTPYTHON
+    @unittest.expectedFailure
     def test_new_builtins_issue_43102(self):
         obj = namedtuple('C', ())
         new_func = obj.__new__
@@ -786,7 +789,6 @@ def _test_gen():
     yield
 
 class TestOneTrickPonyABCs(ABCTestCase):
-
     # TODO: RUSTPYTHON
     @unittest.expectedFailure
     def test_Awaitable(self):
@@ -1964,6 +1966,8 @@ class TestCollectionABCs(ABCTestCase):
         self.assertFalse(issubclass(memoryview, ByteString))
         self.validate_abstract_methods(ByteString, '__getitem__', '__len__')
 
+    # TODO: RUSTPYTHON
+    @unittest.expectedFailure
     def test_MutableSequence(self):
         for sample in [tuple, str, bytes]:
             self.assertNotIsInstance(sample(), MutableSequence)
@@ -2025,6 +2029,8 @@ class TestCollectionABCs(ABCTestCase):
         self.assertEqual(len(mss), len(mss2))
         self.assertEqual(list(mss), list(mss2))
 
+    # TODO: RUSTPYTHON
+    @unittest.expectedFailure
     def test_illegal_patma_flags(self):
         with self.assertRaises(TypeError):
             class Both(Collection):

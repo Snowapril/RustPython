@@ -283,6 +283,8 @@ class CMathTests(unittest.TestCase):
             for arg in ["a", "long_string", "0", "1j", ""]:
                 self.assertRaises(TypeError, f, arg)
 
+    # TODO: RUSTPYTHON
+    @unittest.expectedFailure
     def test_cmath_matches_math(self):
         # check that corresponding cmath and math functions are equal
         # for floats in the appropriate range
@@ -322,12 +324,6 @@ class CMathTests(unittest.TestCase):
             for v in values:
                 z = complex_fn(v)
                 self.rAssertAlmostEqual(float_fn(v), z.real)
-                # TODO: RUSTPYTHON
-                # This line currently fails for acos and asin.
-                # cmath.asin/acos(0.2) should produce a real number,
-                # but imaginary part is 1.1102230246251565e-16 for both.
-                if fn in {"asin", "acos"}:
-                    continue
                 self.assertEqual(0., z.imag)
 
         # test two-argument version of log with various bases

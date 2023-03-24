@@ -581,8 +581,6 @@ def testfunction_kw(self, *, kw):
 
 class TestPEP590(unittest.TestCase):
 
-    # TODO: RUSTPYTHON
-    @unittest.expectedFailure
     def test_method_descriptor_flag(self):
         import functools
         cached = functools.lru_cache(1)(testfunction)

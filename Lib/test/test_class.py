@@ -549,7 +549,6 @@ class ClassTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             a >= b
 
-    @unittest.skip("TODO: RUSTPYTHON; unstable result")
     def testHashComparisonOfMethods(self):
         # Test comparison and hash of methods
         class A:
@@ -617,6 +616,8 @@ class ClassTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             type.__setattr__(A, b'x', None)
 
+    # TODO: RUSTPYTHON
+    @unittest.expectedFailure
     def testTypeAttributeAccessErrorMessages(self):
         class A:
             pass
@@ -627,6 +628,8 @@ class ClassTests(unittest.TestCase):
         with self.assertRaisesRegex(AttributeError, error_msg):
             del A.x
 
+    # TODO: RUSTPYTHON
+    @unittest.expectedFailure
     def testObjectAttributeAccessErrorMessages(self):
         class A:
             pass
@@ -660,6 +663,8 @@ class ClassTests(unittest.TestCase):
         with self.assertRaisesRegex(AttributeError, error_msg):
             del B().z
 
+    # TODO: RUSTPYTHON
+    @unittest.expectedFailure
     def testConstructorErrorMessages(self):
         # bpo-31506: Improves the error message logic for object_new & object_init
 

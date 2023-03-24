@@ -196,8 +196,6 @@ class BaseBytesTest:
         self.assertRaises(ValueError, self.type2test, [sys.maxsize+1])
         self.assertRaises(ValueError, self.type2test, [10**100])
 
-    # TODO: RUSTPYTHON
-    @unittest.expectedFailure
     @bigaddrspacetest
     def test_constructor_overflow(self):
         size = MAX_Py_ssize_t
@@ -704,6 +702,8 @@ class BaseBytesTest:
         self.assertEqual(b.rindex(i, 3, 9), 7)
         self.assertRaises(ValueError, b.rindex, w, 1, 3)
 
+    # TODO: RUSTPYTHON
+    @unittest.expectedFailure
     def test_mod(self):
         b = self.type2test(b'hello, %b!')
         orig = b
@@ -959,8 +959,7 @@ class BaseBytesTest:
         self.assertRaisesRegex(TypeError, r'\bendswith\b', b.endswith,
                                 x, None, None, None)
 
-    # TODO: RUSTPYTHON
-    @unittest.expectedFailure
+    @unittest.skip("TODO: RUSTPYTHON, rustpython hang")
     def test_free_after_iterating(self):
         test.support.check_free_after_iterating(self, iter, self.type2test)
         test.support.check_free_after_iterating(self, reversed, self.type2test)
@@ -1494,11 +1493,8 @@ class ByteArrayTest(BaseBytesTest, unittest.TestCase):
         self.assertEqual(b, b1)
         self.assertIs(b, b1)
 
-    # NOTE: RUSTPYTHON:
-    #
-    # The second instance of self.assertGreater was replaced with
-    # self.assertGreaterEqual since, in RustPython, the underlying storage
-    # is a Vec which doesn't require trailing null byte.
+    # TODO: RUSTPYTHON
+    @unittest.expectedFailure
     def test_alloc(self):
         b = bytearray()
         alloc = b.__alloc__()
@@ -1507,15 +1503,12 @@ class ByteArrayTest(BaseBytesTest, unittest.TestCase):
         for i in range(100):
             b += b"x"
             alloc = b.__alloc__()
-            self.assertGreaterEqual(alloc, len(b))  # NOTE: RUSTPYTHON patched
+            self.assertGreater(alloc, len(b))  # including trailing null byte
             if alloc not in seq:
                 seq.append(alloc)
 
-    # NOTE: RUSTPYTHON:
-    #
-    # The usages of self.assertGreater were replaced with
-    # self.assertGreaterEqual since, in RustPython, the underlying storage
-    # is a Vec which doesn't require trailing null byte.
+    # TODO: RUSTPYTHON
+    @unittest.expectedFailure
     def test_init_alloc(self):
         b = bytearray()
         def g():
@@ -1526,12 +1519,12 @@ class ByteArrayTest(BaseBytesTest, unittest.TestCase):
                 self.assertEqual(len(b), len(a))
                 self.assertLessEqual(len(b), i)
                 alloc = b.__alloc__()
-                self.assertGreaterEqual(alloc, len(b))  # NOTE: RUSTPYTHON patched
+                self.assertGreater(alloc, len(b))  # including trailing null byte
         b.__init__(g())
         self.assertEqual(list(b), list(range(1, 100)))
         self.assertEqual(len(b), 99)
         alloc = b.__alloc__()
-        self.assertGreaterEqual(alloc, len(b))  # NOTE: RUSTPYTHON patched
+        self.assertGreater(alloc, len(b))
 
     def test_extend(self):
         orig = b'hello'
