@@ -18,7 +18,7 @@ use crate::{
         borrow::BorrowedValue,
         lock::{PyRwLock, PyRwLockReadGuard},
     },
-    convert::ToPyResult,
+    convert::{ToPyObject, ToPyResult},
     function::{FuncArgs, KwArgs, OptionalArg, PyMethodDef, PySetterValue},
     identifier,
     object::{Traverse, TraverseFn},
@@ -248,6 +248,8 @@ impl PyType {
         let bases = vec![base.clone()];
         let mro = base.iter_mro().map(|x| x.to_owned()).collect();
 
+        slots = Self::set_new(&base, slots);
+
         let new_type = PyRef::new_ref(
             PyType {
                 base: Some(base),
@@ -261,6 +263,19 @@ impl PyType {
             metaclass,
             None,
         );
+
+        // if new_type.slots.new.load() != new_type.base.as_ref().unwrap().slots.new.load()
+        //     && new_type
+        //         .attributes
+        //         .read()
+        //         .contains_key(identifier!(ctx, __new__))
+        //         == false
+        // {
+        //     new_type.attributes.write().insert(
+        //         identifier!(ctx, __new__),
+        //         ctx.slot_new_wrapper.build_method(ctx, &new_type.to_owned()).into()
+        //     );
+        // }
 
         let weakref_type = super::PyWeak::static_type();
         for base in &new_type.bases {
@@ -395,6 +410,25 @@ impl PyType {
         } else {
             heap_f(self.heaptype_ext.as_ref().unwrap())
         }
+    }
+
+    fn set_new(base: &PyRef<Self>, mut slots: PyTypeSlots) -> PyTypeSlots {
+        // if slots.new.load().is_none()
+        //     && base.class().is(ctx.types.object_type)
+        //     && slots.flags.contains(PyTypeFlags::HEAPTYPE)
+        // {
+        //     slots.flags |= PyTypeFlags::DISALLOW_INSTANTIATION;
+        // }
+
+        if slots.flags.contains(PyTypeFlags::DISALLOW_INSTANTIATION) {
+            slots.new.store(None)
+        } else {
+            if slots.new.load().is_none() {
+                slots.new.store(base.slots.new.load())
+            }
+        }
+
+        slots
     }
 
     pub fn slot_name(&self) -> BorrowedValue<str> {
@@ -1094,12 +1128,24 @@ impl Callable for PyType {
     type Args = FuncArgs;
     fn call(zelf: &Py<Self>, args: FuncArgs, vm: &VirtualMachine) -> PyResult {
         vm_trace!("type_call: {:?}", zelf);
-        let obj = call_slot_new(zelf.to_owned(), zelf.to_owned(), args.clone(), vm)?;
 
-        if (zelf.is(vm.ctx.types.type_type) && args.kwargs.is_empty()) || !obj.fast_isinstance(zelf)
-        {
-            return Ok(obj);
+        let is_type_type: bool = zelf.is(vm.ctx.types.type_type);
+        if is_type_type {
+            let num_args = args.args.len();
+
+            if num_args == 1 && args.kwargs.is_empty() {
+                return Ok(args.args[0].obj_type());
+            }
+            if num_args != 3 {
+                return Err(vm.new_type_error("type() takes 1 or 3 arguments".to_owned()));
+            }
         }
+
+        let obj = if let Some(slot_new) = zelf.slots.new.load() {
+            slot_new(zelf.to_owned(), args.clone(), vm)?
+        } else {
+            return Err(vm.new_type_error(format!("cannot create '{}' instances", zelf.name())));
+        };
 
         let init = obj.class().mro_find_map(|cls| cls.slots.init.load());
         if let Some(init_method) = init {
