@@ -205,6 +205,7 @@ impl PyType {
         if base.slots.flags.has_feature(PyTypeFlags::HAS_DICT) {
             slots.flags |= PyTypeFlags::HAS_DICT
         }
+        let slots = Self::set_new(&base, slots);
 
         let new_type = PyRef::new_ref(
             PyType {
@@ -247,6 +248,7 @@ impl PyType {
 
         let bases = vec![base.clone()];
         let mro = base.iter_mro().map(|x| x.to_owned()).collect();
+        let slots = Self::set_new(&base, slots);
 
         let new_type = PyRef::new_ref(
             PyType {
@@ -395,6 +397,24 @@ impl PyType {
         } else {
             heap_f(self.heaptype_ext.as_ref().unwrap())
         }
+    }
+
+    fn set_new(base: &PyRef<Self>, slots: PyTypeSlots) -> PyTypeSlots {
+        // TODO: must provide ctx to new_static
+        // if slots.new.load().is_none()
+        //     && base.class().is(ctx.types.object_type)
+        //     && slots.flags.contains(PyTypeFlags::HEAPTYPE)
+        // {
+        //     slots.flags |= PyTypeFlags::DISALLOW_INSTANTIATION;
+        // }
+
+        if slots.flags.contains(PyTypeFlags::DISALLOW_INSTANTIATION) {
+            slots.new.store(None)
+        } else if slots.new.load().is_none() {
+            slots.new.store(base.slots.new.load())
+        }
+
+        slots
     }
 
     pub fn slot_name(&self) -> BorrowedValue<str> {
