@@ -1126,16 +1126,21 @@ impl Callable for PyType {
         }
 
         let obj = if let Some(slot_new) = zelf.slots.new.load() {
-            slot_new(zelf.to_owned(), args.clone(), vm)?
+            slot_new(zelf.to_owned(), args.clone(), vm)
         } else {
-            return Err(vm.new_type_error(format!("cannot create '{}' instances", zelf.slots.name)));
-        };
+            Err(vm.new_type_error(format!("cannot create '{}' instances", zelf.slots.name)))
+        }?;
 
-        let init = obj.class().mro_find_map(|cls| cls.slots.init.load());
-        if let Some(init_method) = init {
+        println!("call {}, {}", obj.class().name(), zelf.name());
+
+        Ok(if obj.class().fast_issubclass(zelf) == false {
+            obj
+        } else if let Some(init_method) = obj.class().slots.init.load() {
             init_method(obj.clone(), args, vm)?;
-        }
-        Ok(obj)
+            obj
+        } else {
+            obj
+        })
     }
 }
 

@@ -362,6 +362,8 @@ fn descr_set_wrapper(
 }
 
 fn init_wrapper(obj: PyObjectRef, args: FuncArgs, vm: &VirtualMachine) -> PyResult<()> {
+    println!("init_wrapper of {}", obj.class().name());
+    println!("init_wrapper args args #{}, kwargs #{}", args.args.len(), args.kwargs.len());
     let res = vm.call_special_method(&obj, identifier!(vm, __init__), args)?;
     if !vm.is_none(&res) {
         return Err(vm.new_type_error("__init__ must return None".to_owned()));
@@ -966,9 +968,12 @@ pub trait Representable: PyPayload {
     #[inline]
     #[pyslot]
     fn slot_repr(zelf: &PyObject, vm: &VirtualMachine) -> PyResult<PyStrRef> {
+        println!("slot_repr of {}", zelf.class().name());
         let zelf = zelf
             .downcast_ref()
-            .ok_or_else(|| vm.new_type_error("unexpected payload for __repr__".to_owned()))?;
+            .ok_or_else(|| {
+                vm.new_type_error("unexpected payload for __repr__".to_owned())
+            })?;
         Self::repr(zelf, vm)
     }
 
