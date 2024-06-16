@@ -213,6 +213,8 @@ impl PyType {
             slots.basicsize = base.slots.basicsize;
         }
 
+        let slots = Self::set_new(&base, slots);
+
         if let Some(qualname) = attrs.get(identifier!(ctx, __qualname__)) {
             if !qualname.fast_isinstance(ctx.types.str_type) {
                 return Err(format!(
@@ -263,6 +265,8 @@ impl PyType {
         if slots.basicsize == 0 {
             slots.basicsize = base.slots.basicsize;
         }
+
+        let slots = Self::set_new(&base, slots);
 
         let bases = PyRwLock::new(vec![base.clone()]);
         let mro = base.mro_map_collect(|x| x.to_owned());
@@ -390,6 +394,24 @@ impl PyType {
             )));
         }
         call_slot_new(zelf, subtype, args, vm)
+    }
+
+    fn set_new(base: &PyRef<Self>, slots: PyTypeSlots) -> PyTypeSlots {
+        // TODO: must provide ctx to new_static
+        // if slots.new.load().is_none()
+        //     && base.class().is(ctx.types.object_type)
+        //     && slots.flags.contains(PyTypeFlags::HEAPTYPE)
+        // {
+        //     slots.flags |= PyTypeFlags::DISALLOW_INSTANTIATION;
+        // }
+
+        if slots.flags.contains(PyTypeFlags::DISALLOW_INSTANTIATION) {
+            slots.new.store(None)
+        } else if slots.new.load().is_none() {
+            slots.new.store(base.slots.new.load())
+        }
+
+        slots
     }
 
     fn name_inner<'a, R: 'a>(
@@ -1187,15 +1209,28 @@ impl Callable for PyType {
     type Args = FuncArgs;
     fn call(zelf: &Py<Self>, args: FuncArgs, vm: &VirtualMachine) -> PyResult {
         vm_trace!("type_call: {:?}", zelf);
-        let obj = call_slot_new(zelf.to_owned(), zelf.to_owned(), args.clone(), vm)?;
 
-        if (zelf.is(vm.ctx.types.type_type) && args.kwargs.is_empty()) || !obj.fast_isinstance(zelf)
-        {
-            return Ok(obj);
+        if zelf.is(vm.ctx.types.type_type) {
+            let num_args = args.args.len();
+            if num_args == 1 && args.kwargs.is_empty() {
+                return Ok(args.args[0].obj_type());
+            }
+            if num_args != 3 {
+                return Err(vm.new_type_error("type() takes 1 or 3 arguments".to_owned()));
+            }
         }
 
-        let init = obj.class().mro_find_map(|cls| cls.slots.init.load());
-        if let Some(init_method) = init {
+        let obj = if let Some(slot_new) = zelf.slots.new.load() {
+            slot_new(zelf.to_owned(), args.clone(), vm)?
+        } else {
+            return Err(vm.new_type_error(format!("cannot create '{}' instances", zelf.slots.name)));
+        };
+
+        // if !obj.class().fast_issubclass(vm.ctx.types.type_type) {
+        //     return Ok(obj);
+        // }
+
+        if let Some(init_method) = obj.class().slots.init.load() {
             init_method(obj.clone(), args, vm)?;
         }
         Ok(obj)
